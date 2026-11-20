@@ -1,4 +1,10 @@
-# Discofi (Resymbian fork)
+# Discofi (Resymbian fork) — BETA
+
+> [!WARNING]
+> **This fork is in beta.** The emoji, reaction and unread features have only
+> been exercised in the emulator and in debug demo mode. They have not yet been
+> tested against a real Discord account from a Nokia E51. Expect rough edges
+> and report them in the issue tracker instead of relying on it for daily use.
 
 This is the **Resymbian fork** of [gtrxAC/Discofi](https://github.com/gtrxAC/Discofi).
 It keeps the upstream proxyless design and adds the features that were listed
@@ -21,7 +27,7 @@ Discofi is a new Discord client for select Java devices (Nokia/Sony Ericsson), c
 > [!IMPORTANT]
 > **Discofi is not yet a fully featured replacement for Discord J2ME.**
 >
-> It lacks some features of Discord J2ME (like emojis) but also has some features not present in Discord J2ME (like the inbox).
+> This fork adds emojis, reactions and unread indicators, but it is still in beta and lacks other Discord J2ME features.
 
 ### <div style="text-align: center;">[Downloads and Installation Guide](INSTALL.md)</div>
 ### <div style="text-align: center;">[Support Server](https://discord.gg/2GKuJjQagp) <small>(go to #discord-j2me-wap)</small></div>
