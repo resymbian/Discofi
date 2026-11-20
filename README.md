@@ -20,6 +20,26 @@ such as the **Nokia E51**.
   `last_message_id`. They use no gateway and no extra HTTP requests; reads made
   on another device may not be reflected until this client acknowledges them.
 
+## Installing: JAD or JAR?
+
+Install **`discofi.jar`**. It contains the application and all resources,
+including the bundled emojis.
+
+`discofi.jad` is not the app. It is a small text descriptor with the version,
+JAR size and the line `MIDlet-Jar-URL: discofi.jar`. It is only needed for OTA
+installs through the phone browser, and it expects the JAR to be available at
+that relative URL.
+
+* **Cable, Bluetooth or memory card:** copy `discofi.jar` to the phone and open
+  it from the file manager or the application installer.
+* **Browser/OTA install:** serve both `discofi.jad` and `discofi.jar` from the
+  same directory, then open the JAD. If the JAR is not next to it, the install
+  will fail.
+* Do not install `discofi_debug.jar` for normal use; it is the debug build.
+
+On Symbian S60v3 (including the E51) no signing certificate is required. Install
+the nnproject TLS 1.2 patch and jailbreak with RomPatcher/installserver first.
+
 ---
 
 Discofi is a new Discord client for select Java devices (Nokia/Sony Ericsson), currently in development. Its goal is to be an evolution of [Discord J2ME](https://github.com/gtrxAC/discord-j2me) and [Droidcord](https://github.com/leap0x7b/Droidcord) with a focus on proxyless connectivity, user-friendly UI, and maintainability.

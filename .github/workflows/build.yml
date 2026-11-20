@@ -79,6 +79,9 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
       - name: Download artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -93,21 +96,8 @@ jobs:
           case "${GITHUB_REF_NAME}" in
             *-*) EXTRA="--prerelease" ;;
           esac
-          cat > /tmp/release-notes.md <<'EOF'
-          > [!WARNING]
-          > **Beta release.** Emojis, reactions and unread indicators have only
-          > been tested in the emulator/debug demo, not yet with a real Discord
-          > account on a Nokia E51. Back up your data and expect rough edges.
-
-          On Symbian S60v3 (including the E51) no signing certificate is needed:
-          install the nnproject TLS 1.2 patch, jailbreak with RomPatcher/installserver,
-          then install `discofi.jar`. `discofi_lite.jar` omits bundled emoji assets.
-
-          Verify the download with `SHA256SUMS`, and optionally with
-          `gh attestation verify discofi.jar --repo resymbian/Discofi`.
-          EOF
           gh release create "${GITHUB_REF_NAME}" dist/* \
             --repo "${GITHUB_REPOSITORY}" \
             --title "Discofi ${GITHUB_REF_NAME} (beta)" \
-            --notes-file /tmp/release-notes.md \
+            --notes-file .github/release-notes.md \
             $EXTRA
