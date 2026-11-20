@@ -75,7 +75,9 @@ jobs:
 
   release:
     name: Publish release
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Publish on every successful build. Pull requests are excluded because
+    # forks only get a read-only token.
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -91,16 +93,24 @@ jobs:
           name: discofi-jars
           path: dist
 
-      - name: Create GitHub release
+      - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          EXTRA=""
-          case "${GITHUB_REF_NAME}" in
-            *-*) EXTRA="--prerelease" ;;
+          VERSION="$(awk -F': ' '/^MIDlet-Version:/ {print $2; exit}' dist/discofi.jad | tr -d '\r')"
+          case "${GITHUB_REF}" in
+            refs/tags/v*) TAG="${GITHUB_REF_NAME}" ;;
+            *) TAG="v${VERSION}-beta.${GITHUB_RUN_NUMBER}" ;;
           esac
-          gh release create "${GITHUB_REF_NAME}" dist/* \
-            --repo "${GITHUB_REPOSITORY}" \
-            --title "Discofi ${GITHUB_REF_NAME} (beta)" \
-            --notes-file .github/release-notes.md \
-            $EXTRA
+
+          if gh release view "$TAG" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Updating existing release $TAG"
+            gh release upload "$TAG" dist/* --repo "${GITHUB_REPOSITORY}" --clobber
+          else
+            echo "Creating release $TAG"
+            gh release create "$TAG" dist/* \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "Discofi $TAG (beta)" \
+              --notes-file .github/release-notes.md \
+              --prerelease
+          fi

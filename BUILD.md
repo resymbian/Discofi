@@ -36,7 +36,11 @@ dispatch:
    process. A startup error or a stuck background thread fails CI.
 8. Generates a signed SLSA build provenance attestation for every JAR, JAD and
    `SHA256SUMS` with `actions/attest-build-provenance`.
-9. Uploads the artifacts. A `v*` tag also publishes them as a GitHub release.
+9. Uploads the artifacts and publishes them as a GitHub prerelease on every
+   successful build (pull requests excluded: forks only get a read-only token).
+   The tag is `v<MIDlet-Version>-beta.<run number>`, or the pushed `v*` tag when
+   the build was triggered by one. Re-running a build updates the same release
+   instead of creating a duplicate.
 
 ## Verify a downloaded artifact
 
