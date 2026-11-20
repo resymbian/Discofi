@@ -15,8 +15,27 @@ mkdir -p sdk
 if [ ! -x "sdk/$JDK_VERSION/bin/javac" ]; then
   echo "Downloading Temurin $JDK_VERSION"
   tmp="$(mktemp)"
-  curl --fail --location --retry 3 --output "$tmp" "$JDK_URL"
-  echo "$JDK_SHA256  $tmp" | sha256sum --check -
+  verified=0
+
+  # GitHub release assets occasionally return a small HTML error page with a
+  # 200 status. Retry the whole download when the pinned hash does not match.
+  for attempt in 1 2 3; do
+    if curl --fail --location --retry 3 --retry-all-errors \
+        --connect-timeout 20 --output "$tmp" "$JDK_URL" &&
+       echo "$JDK_SHA256  $tmp" | sha256sum --check --status -; then
+      verified=1
+      break
+    fi
+    echo "JDK download attempt $attempt failed; retrying"
+    sleep 5
+  done
+
+  if [ "$verified" -ne 1 ]; then
+    rm -f "$tmp"
+    echo "Could not download a JDK archive matching $JDK_SHA256" >&2
+    exit 1
+  fi
+
   tar -xzf "$tmp" -C sdk
   rm -f "$tmp"
 fi
