@@ -2,6 +2,7 @@ package fi.gtrxac.discord;
 
 import fi.gtrxac.bluewap.ui.*;
 import fi.gtrxac.bluewap.client.*;
+import com.gtrxac.discord.HTTPQueue;
 import fi.gtrxac.tinytls.TLSTest;
 import javax.microedition.midlet.*;
 import javax.microedition.lcdui.Command;
@@ -49,8 +50,34 @@ public class App extends AppBase {
     }
 
     public void destroyApp(boolean unconditional) {
-        UnreadStore.saveIfDirty();
-        Settings.save();
+        // Save before the framework stops the UI threads and calls
+        // notifyDestroyed(). Never let a save failure block the exit.
+        try {
+            UnreadStore.saveIfDirty();
+        }
+        catch (Throwable t) {}
+
+        try {
+            Settings.save();
+        }
+        catch (Throwable t) {}
+
+        try {
+            EmojiManager.shutdown();
+        }
+        catch (Throwable t) {}
+
+        try {
+            IconManager.shutdown();
+        }
+        catch (Throwable t) {}
+
+        try {
+            HTTPQueue.shutdown();
+        }
+        catch (Throwable t) {}
+
+        super.destroyApp(unconditional);
     }
 
     public static void loginCompleted(String token) {

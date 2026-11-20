@@ -22,6 +22,12 @@ def normalize(src, dst):
     if manifest not in data:
         raise SystemExit(f"{src}: missing {manifest}")
 
+    # JAR manifests must use CRLF. On Linux ProGuard rewrites the adapted
+    # manifest with bare LF, which strict J2ME JVMs reject with the generic
+    # "unknown error" at launch. Keep the bytes identical apart from endings.
+    manifest_bytes = data[manifest].replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    data[manifest] = (manifest_bytes.rstrip(b"\n") + b"\n\n").replace(b"\n", b"\r\n")
+
     rest = sorted(name for name in names if name != manifest)
 
     with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zout:

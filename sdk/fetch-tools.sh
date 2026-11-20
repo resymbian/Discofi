@@ -9,6 +9,9 @@ JDK_SHA256="27eda854481d20806d918b30cdd417c6bed4fd15882e24f3595dc8ae7fb5d095"
 PROGUARD_URL="https://repo1.maven.org/maven2/net/sf/proguard/proguard-base/6.2.2/proguard-base-6.2.2.jar"
 PROGUARD_SHA256="7587a3a415d6aea1946f597f4babe710a245f085bac4dc5e7cda653acfc39b03"
 
+MICROEMU_URL="https://repo1.maven.org/maven2/org/microemu/microemulator/2.0.4/microemulator-2.0.4.jar"
+MICROEMU_SHA256="dbd5f3eb8365d3e839d6a203149e0e3776fc1a0585e16ac1fc23f76c9fcae1c6"
+
 cd "$(dirname "$0")/.."
 mkdir -p sdk
 
@@ -46,5 +49,13 @@ if [ ! -f sdk/proguard.jar ]; then
   echo "$PROGUARD_SHA256  sdk/proguard.jar" | sha256sum --check -
 fi
 
+if [ ! -f sdk/microemulator.jar ]; then
+  echo "Downloading MicroEmulator 2.0.4"
+  curl --fail --location --retry 3 --retry-all-errors \
+    --output sdk/microemulator.jar "$MICROEMU_URL"
+  echo "$MICROEMU_SHA256  sdk/microemulator.jar" | sha256sum --check -
+fi
+
 echo "JDK: $(sdk/$JDK_VERSION/bin/java -version 2>&1 | head -1)"
 echo "ProGuard: $(sdk/$JDK_VERSION/bin/java -jar sdk/proguard.jar 2>&1 | head -1)"
+echo "MicroEmulator: $MICROEMU_SHA256"

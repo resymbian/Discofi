@@ -21,16 +21,22 @@ dispatch:
 5. Runs `sdk/package.py`, which:
    - verifies the hashes of every committed `sdk/lib/*.jar` and emoji asset
      against `sdk/lib.sha256` and `res/emoji.sha256`;
-   - normalizes JAR entry order and timestamps (fixed 1980-01-01);
+   - normalizes JAR entry order and timestamps (fixed 1980-01-01) and forces
+     the manifest to CRLF, as required by the JAR format and accepted by
+     strict J2ME JVMs;
    - checks each JAR has a valid manifest, a Java 1.2 class version (46), the
      expected emoji assets (not in `lite`), no debug-only classes in releases,
      and stays within its size budget;
    - writes a JAD for every JAR and `bin/SHA256SUMS`.
 6. Repeats a clean build and fails unless `bin/SHA256SUMS` is byte-for-byte
    identical. The fork is reproducible with the pinned toolchain.
-7. Generates a signed SLSA build provenance attestation for every JAR, JAD and
+7. Runs `sdk/test.sh`: a headless MicroEmulator MIDlet that starts the app,
+   checks emoji lookup/rendering, reactions, the picker and the compose draft,
+   then calls `destroyApp()` and requires `notifyDestroyed()` to end the
+   process. A startup error or a stuck background thread fails CI.
+8. Generates a signed SLSA build provenance attestation for every JAR, JAD and
    `SHA256SUMS` with `actions/attest-build-provenance`.
-8. Uploads the artifacts. A `v*` tag also publishes them as a GitHub release.
+9. Uploads the artifacts. A `v*` tag also publishes them as a GitHub release.
 
 ## Verify a downloaded artifact
 

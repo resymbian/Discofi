@@ -3,6 +3,7 @@ package fi.gtrxac.discord;
 import java.util.*;
 import java.io.*;
 import fi.gtrxac.bluewap.*;
+import fi.gtrxac.bluewap.ui.AppBase;
 import fi.gtrxac.discord.model.*;
 import fi.gtrxac.discord.util.*;
 import javax.microedition.lcdui.Image;
@@ -13,6 +14,11 @@ public class IconManager implements Runnable {
     private static final ResizedIconCache resizedIconCache = new ResizedIconCache();
 
     private static final Vector requests = new Vector();
+    private static volatile boolean running = true;
+
+    public static void shutdown() {
+        running = false;
+    }
 
     public static Image get(User user, int size, MessageItem callback) {
         // User doesn't have an icon -> always null
@@ -77,7 +83,7 @@ public class IconManager implements Runnable {
      * Worker thread that handles icon requests.
      */
     public void run() {
-        while (true) {
+        while (running && AppBase.isRunning()) {
             try {
                 IconRequest req = null;
 

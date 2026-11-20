@@ -6,3 +6,4 @@ node_modules/
 /sdk/jdk*/
 /sdk/log.txt
 /sdk/proguard.jar
+/sdk/microemulator.jar

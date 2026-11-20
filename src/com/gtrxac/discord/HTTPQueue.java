@@ -1,6 +1,7 @@
 package com.gtrxac.discord;
 
 import fi.gtrxac.bluewap.*;
+import fi.gtrxac.bluewap.ui.AppBase;
 import java.io.*;
 import java.util.*;
 import javax.microedition.io.*;
@@ -19,6 +20,11 @@ public class HTTPQueue implements Runnable {
     public HttpConnection hc;
 
     private static volatile Vector queueItems = new Vector(maxSlots);
+    private static volatile boolean running = true;
+
+    public static void shutdown() {
+        running = false;
+    }
 
     static {
         new Thread(new HTTPQueue()).start();
@@ -42,7 +48,7 @@ public class HTTPQueue implements Runnable {
     }
 
     public void run() {
-        while (true) {
+        while (running && AppBase.isRunning()) {
             long expireTime = System.currentTimeMillis() + TIMEOUT_MS;
             int closedCount = 0;
 
@@ -58,7 +64,12 @@ public class HTTPQueue implements Runnable {
             }
 
             // System.out.println("Checked connections, closed " + closedCount + ", currently " + queueItems.size());
-            Util.sleep(5000);
+            try {
+                Thread.sleep(5000);
+            }
+            catch (InterruptedException e) {
+                break;
+            }
         }
     }
 

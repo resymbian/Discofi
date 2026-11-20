@@ -26,5 +26,10 @@ On Symbian S60v3 (including the E51) no signing certificate is required.
 Install the nnproject TLS 1.2 patch and jailbreak with
 RomPatcher/installserver first.
 
+This build fixes the "unknown error" at launch on strict J2ME JVMs (the
+manifest is now CRLF) and the app staying in the background after exit
+(`destroyApp()` now stops the workers and calls `notifyDestroyed()`). Every
+build is smoke-tested headlessly for startup, emojis, reactions and shutdown.
+
 Verify the download with `SHA256SUMS`, and optionally with
 `gh attestation verify discofi.jar --repo resymbian/Discofi`.

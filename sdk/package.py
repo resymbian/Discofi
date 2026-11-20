@@ -81,7 +81,12 @@ def verify_jar(target, spec):
         if "META-INF/MANIFEST.MF" not in names:
             raise SystemExit(f"{target}: missing manifest")
 
-        manifest = z.read("META-INF/MANIFEST.MF").decode("utf-8", "replace")
+        manifest_bytes = z.read("META-INF/MANIFEST.MF")
+        bare_lf = manifest_bytes.replace(b"\r\n", b"").find(b"\n") != -1
+        if b"\r\n" not in manifest_bytes or bare_lf:
+            raise SystemExit(f"{target}: manifest must use CRLF line endings")
+
+        manifest = manifest_bytes.decode("utf-8", "replace")
         midlet_line = next((line for line in manifest.splitlines()
                             if line.startswith("MIDlet-1:")), None)
         if midlet_line is None:

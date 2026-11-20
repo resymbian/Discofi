@@ -47,10 +47,13 @@ jobs:
           python3 sdk/package.py
           diff -u /tmp/SHA256SUMS.first bin/SHA256SUMS
 
+      - name: Smoke-test startup, emojis and shutdown
+        run: ./sdk/test.sh
+
       - name: Show audit summary
         run: |
           cat bin/SHA256SUMS
-          sha256sum sdk/proguard.jar sdk/jdk*/bin/java
+          sha256sum sdk/proguard.jar sdk/microemulator.jar sdk/jdk*/bin/java
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3

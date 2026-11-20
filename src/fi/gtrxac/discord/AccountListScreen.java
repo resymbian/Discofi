@@ -69,7 +69,7 @@ public class AccountListScreen extends ListScreen implements CommandListener {
     public void commandAction(Command c, Displayable d) {
         switch (c.getPriority()) {
             case CMD_QUIT: {
-                App.instance.notifyDestroyed();
+                App.instance.destroyApp(true);
                 break;
             }
             case CMD_EDIT: {

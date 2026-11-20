@@ -193,8 +193,7 @@ public class MainScreen extends TabbedListScreen implements CommandListener, Lis
                 break;
             }
             case CMD_QUIT_PROMPT_YES: {
-                UnreadStore.saveIfDirty();
-                App.instance.notifyDestroyed();
+                App.instance.destroyApp(true);
                 break;
             }
             case CMD_QUIT_PROMPT_NO: {

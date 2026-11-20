@@ -12,40 +12,99 @@ public abstract class AppBase extends MIDlet {
     //
 	public static Display disp;
     public static AppBase instance;
-    
+
+    // Worker threads check this flag so destroyApp can actually stop them.
+    // A MIDlet that forgets to call notifyDestroyed() is left running in the
+    // background by S60 until the phone is rebooted.
+    private static volatile boolean running = true;
+
     private boolean started = false;
 
     public AppBase() {
         instance = this;
     }
 
+    public static boolean isRunning() {
+        return running;
+    }
+
     public void startApp() {
         if (started) return;
         started = true;
-        disp = Display.getDisplay(this);
-        Fonts.loadFonts(Font.SIZE_SMALL);
-        Colors.loadDefaults();
 
-        init();
+        try {
+            disp = Display.getDisplay(this);
 
-        // AppCanvas.instance is only assigned after its constructor returns.
-        // Setting the canvas current does not necessarily schedule an initial
-        // paint on all JVMs, so request one explicitly.
-        AppCanvas canvas = AppCanvas.instance;
-        disp.setCurrent(canvas);
+            // Assign the canvas before anything else can use it. The old
+            // static initializer ran while the class was still being set up,
+            // and optimized builds could see a null instance.
+            AppCanvas.create();
 
-        // Run after the setCurrent request has been handled, otherwise the
-        // initial repaint can be lost on some JVMs.
-        disp.callSerially(new Runnable() {
-            public void run() {
-                AppCanvas.instance.repaint();
-            }
-        });
+            Fonts.loadFonts(Font.SIZE_SMALL);
+            Colors.loadDefaults();
+
+            init();
+
+            disp.setCurrent(AppCanvas.instance);
+
+            // Some JVMs do not schedule an initial paint for setCurrent().
+            disp.callSerially(new Runnable() {
+                public void run() {
+                    try {
+                        if (AppCanvas.instance != null) AppCanvas.instance.repaint();
+                    }
+                    catch (Throwable t) {
+                        showFatalError(t);
+                    }
+                }
+            });
+        }
+        catch (Throwable t) {
+            // Never let the JVM show its generic "unknown error" with no way
+            // to quit. Show the real cause and an Exit command instead.
+            showFatalError(t);
+        }
+    }
+
+    private void showFatalError(Throwable t) {
+        String detail = (t == null) ? "Unknown error" : t.toString();
+
+        try {
+            Form form = new Form("Discofi could not start");
+            form.append(new javax.microedition.lcdui.StringItem("Error", detail));
+            form.addCommand(new Command("Exit", Command.EXIT, 1));
+            form.setCommandListener(new CommandListener() {
+                public void commandAction(Command c, Displayable d) {
+                    AppBase.instance.destroyApp(true);
+                }
+            });
+            disp.setCurrent(form);
+        }
+        catch (Throwable ignored) {
+            // Last resort: at least let the user leave the MIDlet.
+            notifyDestroyed();
+        }
     }
 
     public void pauseApp() {}
 
-    public void destroyApp(boolean unconditional) {}
+    public void destroyApp(boolean unconditional) {
+        running = false;
+
+        try {
+            AppCanvas.shutdown();
+        }
+        catch (Throwable ignored) {}
+
+        try {
+            KeyRepeatThread.shutdown();
+        }
+        catch (Throwable ignored) {}
+
+        // Required by MIDP: without this the suite stays in the background
+        // and on S60 can only be removed by rebooting the phone.
+        notifyDestroyed();
+    }
 
     // _________________________________________________________________________
     //
@@ -55,8 +114,11 @@ public abstract class AppBase extends MIDlet {
     private static Stack screens = new Stack();
 
     private static void screenChanged() {
-        AppCanvas.instance.updateCommands();
-        AppCanvas.instance.updateTitle();
+        AppCanvas canvas = AppCanvas.instance;
+        if (canvas == null) return;
+
+        canvas.updateCommands();
+        canvas.updateTitle();
         repaint();
     }
 
@@ -127,6 +189,6 @@ public abstract class AppBase extends MIDlet {
     }
 
     public static void repaint() {
-        AppCanvas.instance.repaint();
+        if (AppCanvas.instance != null) AppCanvas.instance.repaint();
     }
 }

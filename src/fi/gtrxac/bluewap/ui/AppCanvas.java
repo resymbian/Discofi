@@ -8,7 +8,10 @@ import fi.gtrxac.bluewap.*;
  * The canvas that shows and handles all screens managed by the UI framework.
  */
 public class AppCanvas extends Canvas {
-    public static final AppCanvas instance = new AppCanvas();
+    // Assigned by AppBase.startApp(), before any screen is created. Keeping it
+    // non-final also stops ProGuard from propagating "null" into methods that
+    // run while the canvas is being constructed.
+    public static AppCanvas instance;
     private final Vector canvasCommands = new Vector();
 
     private String leftSoftkeyLabel;
@@ -23,18 +26,38 @@ public class AppCanvas extends Canvas {
     private boolean use12hTime;
     private String currentClock;
     private String currentTitle;
+    private final String midletName;
+
+    private ClockThread clockThread;
+
+    /** Create the single canvas. Called by AppBase.startApp(). */
+    public static AppCanvas create() {
+        instance = new AppCanvas();
+        return instance;
+    }
 
     private AppCanvas() {
         super();
         setFullScreenMode(true);
-        
-        new ClockThread().start();
-        // Do not call updateClock() here: this constructor runs while the
-        // static instance field is still null, and optimized builds may
-        // remove the null guard in updateClock(). Initialise the text only.
+
+        midletName = AppBase.instance.getAppProperty("MIDlet-Name");
+
+        // Initialise the text only: calling updateClock() here would repaint
+        // before the static instance field has been assigned.
         currentClock = Util.formatTimestamp(new Date().getTime(), use12hTime);
 
+        clockThread = new ClockThread();
+        clockThread.start();
+
         KeyRepeatThread.instance.start();
+    }
+
+    /** Stop the canvas-owned threads when the MIDlet is destroyed. */
+    public static void shutdown() {
+        // The clock thread checks AppBase.isRunning() in short sleeps, so
+        // there is nothing to interrupt explicitly (CLDC 1.0 has no
+        // Thread.interrupt()).
+        instance = null;
     }
 
     protected void paint(Graphics g) {
@@ -450,8 +473,6 @@ public class AppCanvas extends Canvas {
         leftSoftkeyLabel = "Options";
     }
 
-    private static final String midletName = AppBase.instance.getAppProperty("MIDlet-Name");
-
     public void updateTitle() {
         Screen curr = AppBase.getCurrentScreen();
         if (curr == null) return;
@@ -481,6 +502,7 @@ public class AppCanvas extends Canvas {
     }
 
     public static void setTimeFormat(boolean use12hTime) {
+        if (instance == null) return;
         instance.use12hTime = use12hTime;
         instance.updateClock();
     }

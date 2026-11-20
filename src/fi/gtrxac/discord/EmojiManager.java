@@ -1,6 +1,7 @@
 package fi.gtrxac.discord;
 
 import fi.gtrxac.discord.model.*;
+import fi.gtrxac.bluewap.ui.AppBase;
 import java.util.*;
 import javax.microedition.lcdui.Image;
 
@@ -17,6 +18,11 @@ public class EmojiManager {
     private static final Hashtable cache = new Hashtable();
     private static final Hashtable failed = new Hashtable();
     private static final Vector requests = new Vector();
+    private static volatile boolean running = true;
+
+    public static void shutdown() {
+        running = false;
+    }
 
     public static Image get(String id, MessageItem callback) {
         Image image = (Image) cache.get(id);
@@ -71,9 +77,9 @@ public class EmojiManager {
     private EmojiManager() {}
 
     static {
-        Thread worker = new Thread(new Runnable() {
+        new Thread(new Runnable() {
             public void run() {
-                while (true) {
+                while (running && AppBase.isRunning()) {
                     EmojiRequest req = null;
 
                     synchronized (requests) {
@@ -90,7 +96,9 @@ public class EmojiManager {
                         try {
                             Thread.sleep(250);
                         }
-                        catch (InterruptedException e) {}
+                        catch (InterruptedException e) {
+                            continue;
+                        }
                         continue;
                     }
 
@@ -101,7 +109,6 @@ public class EmojiManager {
                     h.start();
                 }
             }
-        });
-        worker.start();
+        }).start();
     }
 }
