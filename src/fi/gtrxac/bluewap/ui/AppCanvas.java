@@ -29,7 +29,10 @@ public class AppCanvas extends Canvas {
         setFullScreenMode(true);
         
         new ClockThread().start();
-        updateClock();
+        // Do not call updateClock() here: this constructor runs while the
+        // static instance field is still null, and optimized builds may
+        // remove the null guard in updateClock(). Initialise the text only.
+        currentClock = Util.formatTimestamp(new Date().getTime(), use12hTime);
 
         KeyRepeatThread.instance.start();
     }

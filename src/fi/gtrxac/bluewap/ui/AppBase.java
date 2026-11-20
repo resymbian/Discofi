@@ -28,7 +28,19 @@ public abstract class AppBase extends MIDlet {
 
         init();
 
-        disp.setCurrent(AppCanvas.instance);
+        // AppCanvas.instance is only assigned after its constructor returns.
+        // Setting the canvas current does not necessarily schedule an initial
+        // paint on all JVMs, so request one explicitly.
+        AppCanvas canvas = AppCanvas.instance;
+        disp.setCurrent(canvas);
+
+        // Run after the setCurrent request has been handled, otherwise the
+        // initial repaint can be lost on some JVMs.
+        disp.callSerially(new Runnable() {
+            public void run() {
+                AppCanvas.instance.repaint();
+            }
+        });
     }
 
     public void pauseApp() {}
