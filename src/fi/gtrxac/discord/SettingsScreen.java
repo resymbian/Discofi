@@ -18,6 +18,7 @@ public class SettingsScreen extends ListScreen implements CommandListener {
     private RadioButtonGroup timeFormatGroup;
     private TextFieldItem messageCountField;
     private RadioButtonGroup sendTypingGroup;
+    private RadioButtonGroup emojiGroup;
 
     public SettingsScreen() {
         super();
@@ -73,6 +74,16 @@ public class SettingsScreen extends ListScreen implements CommandListener {
 
         sendTypingGroup.setTickedIndex(Settings.sendTypingIndicator ? 0 : 1);
 
+        addItem(new BlankItem(0));
+        addItem(new ChannelCategoryItem("Messages"));
+
+        emojiGroup = new RadioButtonGroup();
+        addItem("Emoji images:");
+        addItem(new RadioButtonItem(emojiGroup, "On"));
+        addItem(new RadioButtonItem(emojiGroup, "Off"));
+
+        emojiGroup.setTickedIndex(Settings.showEmojis ? 0 : 1);
+
         setCommandListener(this);
         addCommand(new Command("Back", Command.BACK, CMD_BACK));
     }
@@ -86,6 +97,7 @@ public class SettingsScreen extends ListScreen implements CommandListener {
         Settings.use12hTime = (timeFormatGroup.getTickedIndex() == 0);
         Settings.messageLoadCount = parseMessageLoadCount();
         Settings.sendTypingIndicator = (sendTypingGroup.getTickedIndex() == 0);
+        Settings.showEmojis = (emojiGroup.getTickedIndex() == 0);
 
         // HTTPQueue.maxSlots = Integer.parseInt(connLimitField.getValue());
         // if (HTTPQueue.maxSlots < 1) HTTPQueue.maxSlots = 1;

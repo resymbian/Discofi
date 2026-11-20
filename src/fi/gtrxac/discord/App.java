@@ -23,6 +23,7 @@ public class App extends AppBase {
     public void init() {
         // TLSTest.test();
         Settings.load();
+        UnreadStore.init();
 
         Account acc = Accounts.getActive();
 
@@ -40,6 +41,16 @@ public class App extends AppBase {
         else {
             pushScreen(new MainScreen());
         }
+    }
+
+    public void pauseApp() {
+        UnreadStore.saveIfDirty();
+        Settings.save();
+    }
+
+    public void destroyApp(boolean unconditional) {
+        UnreadStore.saveIfDirty();
+        Settings.save();
     }
 
     public static void loginCompleted(String token) {

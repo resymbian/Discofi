@@ -17,6 +17,9 @@ public class ChatScreen extends ListScreen implements CommandListener {
     public static final int CMD_REPLY = 3;
     public static final int CMD_EDIT = 4;
     public static final int CMD_DELETE = 5;
+    public static final int CMD_REACT = 6;
+    public static final int CMD_REACTIONS = 7;
+    public static final int CMD_EMOJI = 8;
     public static final int CMD_REFRESH = 99;
     public static final int CMD_DELETE_PROMPT_YES = 100;
     public static final int CMD_DELETE_PROMPT_NO = 101;
@@ -32,6 +35,8 @@ public class ChatScreen extends ListScreen implements CommandListener {
     public String editDraft = "";
     public Message editDraftTarget;
 
+    private long unreadMarkerID;
+
     private static final Command sendCommand = 
         new Command("Send", "Send message", Command.SCREEN, CMD_SEND);
 
@@ -42,10 +47,17 @@ public class ChatScreen extends ListScreen implements CommandListener {
         new Command("Edit", Command.ITEM, CMD_EDIT);
 
     private static final Command deleteCommand =
-        new Command("Delete", Command.ITEM, CMD_DELETE);
-
-    private static final Command refreshCommand =
+        new Command("Delete", Command.ITEM, CMD_DELETE);    private static final Command refreshCommand = 
         new Command("Refresh", Command.SCREEN, CMD_REFRESH);
+
+    private static final Command reactCommand =
+        new Command("React", Command.ITEM, CMD_REACT);
+
+    private static final Command reactionsCommand =
+        new Command("Reactions", Command.ITEM, CMD_REACTIONS);
+
+    private static final Command emojiCommand =
+        new Command("Emoji", Command.SCREEN, CMD_EMOJI);
 
     private static SmallButtonItem olderMessagesButton =
         new SmallButtonItem("Older messages");
@@ -66,6 +78,7 @@ public class ChatScreen extends ListScreen implements CommandListener {
 
         setCommandListener(this);
         addCommand(new Command("Back", Command.BACK, CMD_BACK));
+        addCommand(emojiCommand);
 
         fetchMessages(paginationType, paginationMessage, newPage, true);
     }
@@ -109,10 +122,19 @@ public class ChatScreen extends ListScreen implements CommandListener {
 
         if (messageHighlighted) {
             addCommand(replyCommand);
+            addCommand(reactCommand);
         }
         else {
             removeCommand(replyCommand);
+            removeCommand(reactCommand);
         }
+
+        boolean hasReactions = messageHighlighted &&
+            ((MessageItem) highlighted).message.reactions != null &&
+            ((MessageItem) highlighted).message.reactions.size() > 0;
+
+        if (hasReactions) addCommand(reactionsCommand);
+        else removeCommand(reactionsCommand);
 
         if (ownMessageHighlighted) {
             addCommand(editCommand);
@@ -128,6 +150,8 @@ public class ChatScreen extends ListScreen implements CommandListener {
         switch (c.getPriority()) {
             case CMD_BACK: {
                 IconManager.iconCache.save();
+                UnreadStore.saveIfDirty();
+                updatePreviousScreenUnread();
                 App.popScreen();
                 break;
             }
@@ -149,6 +173,19 @@ public class ChatScreen extends ListScreen implements CommandListener {
             }
             case CMD_DELETE: {
                 showDeletePrompt();
+                break;
+            }
+            case CMD_REACT: {
+                showReactionPicker();
+                break;
+            }
+            case CMD_REACTIONS: {
+                MessageItem item = (MessageItem) getHighlightedItem();
+                App.pushScreen(new ReactionsScreen(this, item.message));
+                break;
+            }
+            case CMD_EMOJI: {
+                showComposeEmojiPicker();
                 break;
             }
             case CMD_REFRESH: {
@@ -226,10 +263,47 @@ public class ChatScreen extends ListScreen implements CommandListener {
         addCommand(sendCommand);
         addCommand(refreshCommand);
 
+        boolean firstLoad = !hasLoaded;
         addMessages(messagesJson, paginationType);
+
+        if (firstLoad && paginationType == null && messages.size() > 0) {
+            long lastRead = UnreadStore.getLastRead(channel.id);
+            unreadMarkerID = findFirstAfter(lastRead);
+        }
+        else {
+            unreadMarkerID = 0;
+        }
+
         readdItems();
 
+        if (firstLoad && paginationType == null && messages.size() > 0) {
+            Message newest = (Message) messages.lastElement();
+            channel.lastMessageID = Long.parseLong(newest.id);
+            UnreadStore.setLastMessageID(channel, channel.lastMessageID);
+            UnreadStore.markRead(channel, channel.lastMessageID);
+            unreadMarkerID = 0;
+        }
+
         hasLoaded = true;
+    }
+
+    private long findFirstAfter(long messageID) {
+        for (int i = 0; i < messages.size(); i++) {
+            Message m = (Message) messages.elementAt(i);
+            if (Long.parseLong(m.id) > messageID) return Long.parseLong(m.id);
+        }
+        return 0;
+    }
+
+    private void updatePreviousScreenUnread() {
+        Screen previous = App.getPreviousScreen();
+
+        if (previous instanceof ChannelListScreen) {
+            ((ChannelListScreen) previous).updateUnreadIndicators();
+        }
+        else if (previous instanceof MainScreen) {
+            ((MainScreen) previous).updateUnreadIndicators();
+        }
     }
 
     private void addMessages(JSONArray messagesJson, String paginationType) {
@@ -286,6 +360,11 @@ public class ChatScreen extends ListScreen implements CommandListener {
         for (int i = 0; i < messages.size(); i++) {
             Message message = (Message) messages.elementAt(i);
 
+            if (unreadMarkerID != 0 && Long.parseLong(message.id) >= unreadMarkerID) {
+                newItemsOutput.addElement(new UnreadItem());
+                unreadMarkerID = 0;
+            }
+
             newItemsOutput.addElement(new MessageItem(message));
 
             if (message.attachments != null) {
@@ -317,6 +396,48 @@ public class ChatScreen extends ListScreen implements CommandListener {
             if (msg.showAuthor) clusterStartID = msg.id;
             above = msg;
         }
+    }
+
+    private void showReactionPicker() {
+        MessageItem item = (MessageItem) getHighlightedItem();
+        final Message target = item.message;
+
+        App.pushScreen(new EmojiPickerScreen(new EmojiPickerListener() {
+            public void onEmojiPicked(String unicode) {
+                sendReaction(target, new Reaction(null, unicode, 0, false));
+            }
+        }));
+    }
+
+    private void showComposeEmojiPicker() {
+        App.pushScreen(new EmojiPickerScreen(new EmojiPickerListener() {
+            public void onEmojiPicked(String unicode) {
+                messageDraft += unicode;
+                App.disp.setCurrent(new MessageBox(ChatScreen.this, messageDraft));
+            }
+        }));
+    }
+
+    /** Toggle a reaction locally and send the matching API request. */
+    public void toggleReaction(Message message, Reaction reaction) {
+        boolean remove = reaction.me;
+
+        HTTPThread h = new HTTPThread(
+            remove ? HTTPThread.ACTION_DELETE_REACTION : HTTPThread.ACTION_SEND_REACTION, this);
+        h.channel = channel;
+        h.reactionMessage = message;
+        h.reaction = reaction;
+        h.start();
+
+        message.toggleReaction(reaction.id, reaction.name);
+
+        int previous = getHighlightedIndex();
+        readdItems();
+        setHighlightedIndex(previous);
+    }
+
+    private void sendReaction(Message message, Reaction reaction) {
+        toggleReaction(message, reaction);
     }
 
     /**

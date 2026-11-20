@@ -1,4 +1,20 @@
-# Discofi
+# Discofi (Resymbian fork)
+
+This is the **Resymbian fork** of [gtrxAC/Discofi](https://github.com/gtrxAC/Discofi).
+It keeps the upstream proxyless design and adds the features that were listed
+as planned, prioritising emojis, reactions and unread indicators for devices
+such as the **Nokia E51**.
+
+* Builds are produced only by GitHub Actions, with pinned toolchains,
+  SHA-256 checks, reproducible JARs and SLSA provenance. See [BUILD.md](BUILD.md).
+* On Symbian S60v3 (including the E51) a certificate is **not** required:
+  install the [nnproject TLS 1.2 patch](https://nnproject.cc/tls/), jailbreak
+  with RomPatcher/installserver, and install the generic JAR.
+* Unread indicators are local read-state comparisons against each channel's
+  `last_message_id`. They use no gateway and no extra HTTP requests; reads made
+  on another device may not be reflected until this client acknowledges them.
+
+---
 
 Discofi is a new Discord client for select Java devices (Nokia/Sony Ericsson), currently in development. Its goal is to be an evolution of [Discord J2ME](https://github.com/gtrxAC/discord-j2me) and [Droidcord](https://github.com/leap0x7b/Droidcord) with a focus on proxyless connectivity, user-friendly UI, and maintainability.
 
@@ -27,17 +43,17 @@ This repo is for the J2ME version. There is a separate repo for the [Android ver
 * Jumping to replies
 * Settings for theme, message count, etc.
 * Bluetooth tethering (BlueWAP)
+* **Emojis** — bundled Unicode emoji + custom guild emoji
+* **Reactions** — view, add and remove
+* **Unread indicators** — channel/DM dots and the red `NEW` divider
 
 ### Planned for later
 * Threads
 * Forums
-* Emojis
-* Reactions
 * Embeds
 * Text formatting with [nnmarkdown](https://github.com/shinovon/nnmarkdown)
 * Custom themes
 * Languages
-* Unread indicators
 
 ### Not planned
 * Gateway (not practical without a proxy, which is unsafe)
@@ -89,3 +105,7 @@ Any device meeting the [system requirements](#system-requirements) should be abl
 
 ## For developers
 The build system is based on my [j2me-template](https://github.com/gtrxAC/j2me-template/).
+
+This fork adds a reproducible, auditable CI pipeline and debug-only emulator
+demo. See [BUILD.md](BUILD.md) for the exact tool versions, hashes and
+verification commands.

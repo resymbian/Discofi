@@ -17,6 +17,7 @@ public class Channel {
     public String id;
     public String name;
     public int type;
+    public long lastMessageID;
 
     public Channel() {}
 
@@ -25,6 +26,14 @@ public class Channel {
         type = data.getInt("type", 0);
         name = data.getString("name", null);
 
+        String lastMessage = data.getString("last_message_id", null);
+        if (lastMessage != null) {
+            try {
+                lastMessageID = Long.parseLong(lastMessage);
+            }
+            catch (NumberFormatException e) {}
+        }
+
         if (nameHasHashtag()) name = "#" + name;
     }
 
@@ -32,6 +41,8 @@ public class Channel {
         id = Long.toString(saveDataStream.readLong());
         type = saveDataStream.readUnsignedByte();
         name = saveDataStream.readUTF();
+        // lastMessageID is intentionally not persisted: the channel list is
+        // refreshed before it is used to show unread indicators.
     }
 
     public void writeSaveData(DataOutputStream saveDataStream) throws IOException {

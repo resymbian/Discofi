@@ -49,6 +49,10 @@ public class ChannelListScreen extends ListScreen implements CommandListener {
     public void commandAction(Command c, Displayable d) {
         switch (c.getPriority()) {
             case CMD_BACK: {
+                Screen previous = App.getPreviousScreen();
+                if (previous instanceof MainScreen) {
+                    ((MainScreen) previous).updateUnreadIndicators();
+                }
                 App.popScreen();
                 break;
             }
@@ -80,10 +84,28 @@ public class ChannelListScreen extends ListScreen implements CommandListener {
             
             for (int j = 0; j < category.children.size(); j++) {
                 Channel channel = (Channel) category.children.elementAt(j);
+                UnreadStore.applyLastMessageID(channel);
 
-                addItem(new ListItem(channel.name, channel));
+                ListItem item = new ListItem(channel.name, channel);
+                item.unread = UnreadStore.hasUnread(channel);
+                addItem(item);
             }
         }
+    }
+
+    /** Refresh unread dots after returning from a chat. */
+    public void updateUnreadIndicators() {
+        for (int i = 0; i < items.size(); i++) {
+            Item item = (Item) items.elementAt(i);
+            if (!(item instanceof ListItem)) continue;
+
+            ListItem li = (ListItem) item;
+            if (li.object instanceof Channel) {
+                li.unread = UnreadStore.hasUnread((Channel) li.object);
+                li.needRecalc();
+            }
+        }
+        App.repaint();
     }
 
     public void showError() {

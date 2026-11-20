@@ -17,7 +17,7 @@ echo "Copying assets"
 mkdir -p build/res
 
 # [[ -e res/* ]] && \
-cp res/* build/res
+cp -r res/* build/res
 cd build/res
 rm -rf ${EXCLUDES}
 cd ../..
