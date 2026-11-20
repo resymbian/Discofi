@@ -17,6 +17,7 @@ public class AccountListScreen extends ListScreen implements CommandListener {
     public static final int CMD_EDIT = 3;
     public static final int CMD_DELETE = 4;
     public static final int CMD_SETTINGS = 5;
+    public static final int CMD_DEMO = 6;
     public static final int CMD_DELETE_PROMPT_YES = 100;
     public static final int CMD_DELETE_PROMPT_NO = 101;
 
@@ -60,6 +61,9 @@ public class AccountListScreen extends ListScreen implements CommandListener {
         addCommand(new Command("Edit", Command.ITEM, CMD_EDIT));
         addCommand(new Command("Delete", Command.ITEM, CMD_DELETE));
         addCommand(new Command("Settings", Command.SCREEN, CMD_SETTINGS));
+//#ifdef DEBUG
+        addCommand(new Command("Demo", Command.SCREEN, CMD_DEMO));
+//#endif
     }
 
     public void commandAction(Command c, Displayable d) {
@@ -84,6 +88,12 @@ public class AccountListScreen extends ListScreen implements CommandListener {
                 App.pushScreen(new SettingsScreen());
                 break;
             }
+//#ifdef DEBUG
+            case CMD_DEMO: {
+                App.pushScreen(new DemoScreen());
+                break;
+            }
+//#endif
             case CMD_DELETE_PROMPT_YES: {
                 Account acc = getHighlightedAccount();
                 if (acc == null) break;

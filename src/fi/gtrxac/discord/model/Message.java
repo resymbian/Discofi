@@ -25,6 +25,7 @@ public class Message {
     public boolean showAuthor;
     public String timestamp;
     public Vector attachments;
+    public Vector reactions;
     public String channelID;
 
     public boolean isStatus;
@@ -53,6 +54,7 @@ public class Message {
             content = parseContent(contentObject);
             parseReply(contentObject);
             parseAttachments(contentObject);
+            parseReactions(contentObject);
         }
     }
 
@@ -100,7 +102,7 @@ public class Message {
             replyAuthor = replyMessage.author;
 
             StringBuffer replyBuf = new StringBuffer();
-            replyBuf.append(replyMessage.content.replace('\n', ' '));
+            replyBuf.append(EmojiData.stripCustomTags(replyMessage.content).replace('\n', ' '));
 
             if (replyMessage.attachments != null) {
                 int attCount = replyMessage.attachments.size();
@@ -140,6 +142,59 @@ public class Message {
             }
             catch (Exception e) {}
         }
+    }
+
+    private void parseReactions(JSONObject data) {
+        try {
+            JSONArray array = data.getArray("reactions");
+            if (array == null || array.size() == 0) return;
+
+            reactions = new Vector(array.size());
+
+            for (int i = 0; i < array.size(); i++) {
+                JSONObject json = array.getObject(i);
+                JSONObject emoji = json.getObject("emoji");
+
+                String id = emoji.getString("id", null);
+                String name = emoji.getString("name", null);
+                if (name == null) name = "?";
+
+                reactions.addElement(new Reaction(
+                    id, name, json.getInt("count", 0), json.getBoolean("me", false)));
+            }
+        }
+        catch (Exception e) {}
+    }
+
+    /**
+     * Apply an optimistic local reaction toggle. The server is updated by
+     * HTTPThread; the next refresh replaces this with authoritative data.
+     */
+    public void toggleReaction(String id, String name) {
+        if (reactions == null) reactions = new Vector();
+
+        for (int i = 0; i < reactions.size(); i++) {
+            Reaction r = (Reaction) reactions.elementAt(i);
+            if (!sameEmoji(r, id, name)) continue;
+
+            if (r.me) {
+                r.me = false;
+                r.count--;
+                if (r.count <= 0) reactions.removeElementAt(i);
+            }
+            else {
+                r.me = true;
+                r.count++;
+            }
+            return;
+        }
+
+        reactions.addElement(new Reaction(id, name, 1, true));
+    }
+
+    private static boolean sameEmoji(Reaction r, String id, String name) {
+        if (id != null) return id.equals(r.id);
+        return r.id == null && name.equals(r.name);
     }
 
     private String parseStatusMessage(JSONObject data, int type) {
@@ -248,6 +303,7 @@ public class Message {
         isStatus = true;
         isForwarded = false;
         attachments = null;
+        reactions = null;
         // isEdited = false;
         // embeds = null;
     }

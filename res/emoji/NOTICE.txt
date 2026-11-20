@@ -1,0 +1,15 @@
+Emoji artwork notice
+====================
+
+The PNG sprite sheets in this directory are derived from Twemoji
+(https://github.com/twitter/twemoji), copyright Twitter, Inc. and other
+contributors, licensed under CC-BY 4.0:
+https://creativecommons.org/licenses/by/4.0/
+
+They were taken from the Discord J2ME project at commit
+7468c90afece547e75de90a82f2ca8bd8ea640da
+(https://github.com/gtrxAC/discord-j2me, MIT licensed client code).
+
+emoji.dat is a compact conversion of that project's emoji.json and
+emoji_proxyless.json, keeping the same 544-entry / 45-cell-per-sheet layout.
+Its SHA-256 is recorded in res/emoji.sha256 and checked by sdk/package.py.

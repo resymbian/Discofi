@@ -21,6 +21,6 @@
     "name": "discofi_lite",
     "defines": ["NO_BLUETOOTH", "NO_FILECONNECTION", "NO_HTTP_BLUETOOTH_SUPPORT"],
     "bootclasspath": ["sdk/lib/midp20.jar", "sdk/lib/cldc10.jar"],
-    "excludes": []
+    "excludes": ["emoji"]
   }
 ]

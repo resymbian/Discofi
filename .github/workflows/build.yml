@@ -1,0 +1,95 @@
+name: build
+
+on:
+  push:
+    branches:
+      - master
+      - 'resymbian-*'
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and attest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+
+      - name: Fetch pinned JDK 8 and ProGuard
+        run: ./sdk/fetch-tools.sh
+
+      - name: Build all MIDlet targets
+        run: ./build.sh
+
+      - name: Package, audit and generate JAD/SHA256SUMS
+        run: python3 sdk/package.py
+
+      - name: Prove reproducible builds
+        run: |
+          cp bin/SHA256SUMS /tmp/SHA256SUMS.first
+          ./build.sh
+          python3 sdk/package.py
+          diff -u /tmp/SHA256SUMS.first bin/SHA256SUMS
+
+      - name: Show audit summary
+        run: |
+          cat bin/SHA256SUMS
+          sha256sum sdk/proguard.jar sdk/jdk*/bin/java
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: |
+            bin/*.jar
+            bin/*.jad
+            bin/SHA256SUMS
+
+      - name: Upload MIDlet artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: discofi-jars
+          path: |
+            bin/*.jar
+            bin/*.jad
+            bin/SHA256SUMS
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: discofi-jars
+          path: dist
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Discofi ${GITHUB_REF_NAME}" \
+            --generate-notes

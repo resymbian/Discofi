@@ -16,6 +16,7 @@ public class ListItem extends Item {
     public String text;
     private String displayText;
     public Object object;
+    public boolean unread;
 
     private static int paddingY;
     private static int imageHash;
@@ -51,6 +52,15 @@ public class ListItem extends Item {
         g.setFont(Fonts.plain);
         g.drawString(displayText, Fonts.height/4, paddingY, 0);
 
+        if (unread) {
+            int dotSize = Math.max(5, Fonts.height/4);
+            int dotX = width - Fonts.height - dotSize;
+            int dotY = paddingY + (Fonts.height - dotSize) / 2;
+
+            g.setColor(0xDD2222);
+            g.fillArc(dotX, dotY, dotSize, dotSize, 0, 360);
+        }
+
         if (!highlighted) {
             g.setColor(Colors.spacerItem);
             g.drawLine(0, height - 1, width - 1, height - 1);
@@ -66,6 +76,7 @@ public class ListItem extends Item {
         height = Fonts.height + paddingY*2 + screen.itemPadding + 1;
 
         int textWidth = width - Fonts.height/4 - Fonts.height - Fonts.height/3;
+        if (unread) textWidth -= Fonts.height;
         displayText = Util.stringToWidth(text, Fonts.plain, textWidth);
 
         int newImageSize = Fonts.height;

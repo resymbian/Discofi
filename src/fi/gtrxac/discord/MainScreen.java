@@ -99,8 +99,9 @@ public class MainScreen extends TabbedListScreen implements CommandListener, Lis
 
         for (int i = 0; i < guilds.size(); i++) {
             Guild g = (Guild) guilds.elementAt(i);
-            
-            guildsTab.addItem(new ListItem(g.getName(), g));
+            ListItem item = new ListItem(g.getName(), g);
+            item.unread = UnreadStore.guildHasUnread(g);
+            guildsTab.addItem(item);
         }
     }
 
@@ -110,8 +111,10 @@ public class MainScreen extends TabbedListScreen implements CommandListener, Lis
 
         for (int i = 0; i < dmChannels.size(); i++) {
             DMChannel c = (DMChannel) dmChannels.elementAt(i);
-            
-            dmsTab.addItem(new ListItem(c.getName(), c));
+            UnreadStore.applyLastMessageID(c);
+            ListItem item = new ListItem(c.getName(), c);
+            item.unread = UnreadStore.hasUnread(c);
+            dmsTab.addItem(item);
         }
     }
 
@@ -123,6 +126,29 @@ public class MainScreen extends TabbedListScreen implements CommandListener, Lis
             m.showAuthor = true;
             
             inboxTab.addItem(new MessageItem(m));
+        }
+    }
+
+    /** Refresh the unread dots after returning from a chat. */
+    public void updateUnreadIndicators() {
+        updateUnreadItems(guildsTab);
+        updateUnreadItems(dmsTab);
+        App.repaint();
+    }
+
+    private void updateUnreadItems(ListView list) {
+        for (int i = 0; i < list.items.size(); i++) {
+            Item item = (Item) list.items.elementAt(i);
+            if (!(item instanceof ListItem)) continue;
+
+            ListItem li = (ListItem) item;
+            if (li.object instanceof Guild) {
+                li.unread = UnreadStore.guildHasUnread((Guild) li.object);
+            }
+            else if (li.object instanceof DMChannel) {
+                li.unread = UnreadStore.hasUnread((DMChannel) li.object);
+            }
+            li.needRecalc();
         }
     }
 
@@ -167,6 +193,7 @@ public class MainScreen extends TabbedListScreen implements CommandListener, Lis
                 break;
             }
             case CMD_QUIT_PROMPT_YES: {
+                UnreadStore.saveIfDirty();
                 App.instance.notifyDestroyed();
                 break;
             }

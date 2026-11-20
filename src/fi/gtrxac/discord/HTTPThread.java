@@ -23,6 +23,10 @@ public class HTTPThread extends Thread {
     public static final int ACTION_DELETE_MESSAGE = 10;
     public static final int ACTION_EDIT_MESSAGE = 11;
     public static final int ACTION_SEND_TYPING = 12;
+    public static final int ACTION_FETCH_EMOJI = 13;
+    public static final int ACTION_SEND_REACTION = 14;
+    public static final int ACTION_DELETE_REACTION = 15;
+    public static final int ACTION_MARK_READ = 16;
 
     private int action;
     private Screen callerScreen;
@@ -45,6 +49,10 @@ public class HTTPThread extends Thread {
 	public int attachmentPreviewHeight;
 	public int attachmentRequestId;
     public Message editOrDeleteMessage;
+    public EmojiRequest emojiRequest;
+    public Message reactionMessage;
+    public Reaction reaction;
+    public long markReadMessageID;
 
     public HTTPThread(int action) {
         this(action, App.getCurrentScreen());
@@ -78,6 +86,10 @@ public class HTTPThread extends Thread {
                 case ACTION_DELETE_MESSAGE: runDeleteMessage(); break;
                 case ACTION_EDIT_MESSAGE: runEditMessage(); break;
                 case ACTION_SEND_TYPING: runSendTyping(); break;
+                case ACTION_FETCH_EMOJI: runFetchEmoji(); break;
+                case ACTION_SEND_REACTION: runReaction(false); break;
+                case ACTION_DELETE_REACTION: runReaction(true); break;
+                case ACTION_MARK_READ: runMarkRead(); break;
             }
         }
         catch (DiscordException e) {
@@ -333,6 +345,7 @@ public class HTTPThread extends Thread {
             }
 
             Channel channel = new Channel(channelJson);
+            UnreadStore.setLastMessageID(channel, channel.lastMessageID);
             parentCategory.children.addElement(channel);
         }
     }
@@ -550,5 +563,63 @@ public class HTTPThread extends Thread {
 
         acc.sendTyping(channel.id);
         chatScreen.lastSentTypingTime = System.currentTimeMillis();
+    }
+
+    private void runFetchEmoji() {
+        Image image = null;
+
+        try {
+            if (acc == null) throw new Exception("no active account");
+
+            String url = acc.getCdnUrl() + "/emojis/" + emojiRequest.id + ".png?size=16";
+            HTTP h = HTTP.createRequest(url);
+            image = h.getResponseImage();
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+        finally {
+            EmojiManager.fetchDone(emojiRequest, image);
+        }
+    }
+
+    private void runReaction(boolean delete) throws DiscordException {
+        String emoji = DiscordUtil.encodeReaction(reaction.name, reaction.id);
+        String method = delete ? "DELETE" : "PUT";
+
+        try {
+            HTTP h = acc.createApiRequest(method,
+                "/channels/" + channel.id + "/messages/" + reactionMessage.id +
+                "/reactions/" + emoji + "/@me");
+
+            h.setData("");
+            int responseCode = h.getResponseCode();
+            String responseText = h.getResponseString();
+            acc.checkApiResponse(responseCode, responseText);
+            h.close();
+        }
+        catch (Exception e) {
+            if (e == StandardHTTP.requestMethodException) {
+                throwUnsupportedMethodException(
+                    "Reactions are not supported",
+                    "Your device does not support the HTTP " + method + " method");
+            }
+            throw new DiscordException(e);
+        }
+    }
+
+    private void runMarkRead() {
+        try {
+            HTTP h = acc.createApiRequest("POST",
+                "/channels/" + channel.id + "/messages/" + markReadMessageID + "/ack");
+
+            h.setData("{\"token\":null}");
+            h.getResponseCode();
+            h.close();
+        }
+        catch (Exception e) {
+            // Read receipts are best-effort; local unread state is already updated.
+            e.printStackTrace();
+        }
     }
 }

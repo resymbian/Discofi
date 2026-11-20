@@ -11,6 +11,8 @@ import tube42.lib.imagelib.ImageUtils;
 public class MessageItem extends Item {
     public Message message;
     private String[] textLines;
+    private MessageLayout layout;
+    private int reactionRows;
     private String displayedAuthor;
     private int timestampX;
     private int timestampY;
@@ -185,10 +187,78 @@ public class MessageItem extends Item {
 
         g.setFont(Fonts.plain);
 
-        for (int i = 0; i < textLines.length; i++) {
-            g.drawString(textLines[i], contentX, y, 0);
-            y += Fonts.height;
+        if (layout != null) {
+            layout.draw(g, contentX, y, this);
+            y += layout.getHeight();
         }
+        else {
+            for (int i = 0; i < textLines.length; i++) {
+                g.drawString(textLines[i], contentX, y, 0);
+                y += Fonts.height;
+            }
+        }
+
+        if (message.reactions != null && message.reactions.size() > 0) {
+            drawReactions(g, y, highlighted);
+        }
+    }
+
+    private void drawReactions(Graphics g, int startY, boolean highlighted) {
+        int y = startY + (reactionRows > 0 ? 4 : 0);
+        int x = contentX;
+        int available = contentWidth;
+        int chipHeight = Fonts.height + 4;
+
+        g.setFont(Fonts.plain);
+
+        for (int i = 0; i < message.reactions.size(); i++) {
+            Reaction r = (Reaction) message.reactions.elementAt(i);
+
+            String count = Integer.toString(r.count);
+            int emojiWidth = getReactionEmojiWidth(r);
+            int chipWidth = 8 + emojiWidth + 4 + Fonts.plain.stringWidth(count) + 8;
+
+            if (chipWidth > available && x > contentX) {
+                x = contentX;
+                y += chipHeight + 2;
+                available = contentWidth;
+            }
+
+            g.setColor(r.me ? Theme.reactionBackgroundSel : Theme.reactionBackground);
+            g.fillRect(x, y, chipWidth, chipHeight);
+
+            g.setColor(r.me ? Theme.reactionTextSel : Theme.reactionText);
+
+            if (r.isCustom()) {
+                Image custom = EmojiManager.get(r.id, this);
+                if (custom != null) {
+                    g.drawImage(custom, x + 8, y + 2, 0);
+                }
+                else {
+                    g.drawRect(x + 8, y + 2, 15, 15);
+                }
+            }
+            else if (!EmojiData.draw(g, EmojiData.indexOf(r.name), x + 8, y + 2)) {
+                g.drawString(r.getFallbackText(), x + 8, y + 2, 0);
+            }
+
+            g.drawString(count, x + 8 + emojiWidth + 4, y + 2, 0);
+
+            x += chipWidth + 4;
+            available -= chipWidth + 4;
+        }
+    }
+
+    private int getReactionEmojiWidth(Reaction r) {
+        if (EmojiData.isEnabled()) {
+            if (r.isCustom() || EmojiData.indexOf(r.name) >= 0) return EmojiData.SIZE;
+        }
+        return Fonts.plain.stringWidth(r.getFallbackText());
+    }
+
+    /** Callback from EmojiManager when a custom emoji finished downloading. */
+    public void emojiLoaded() {
+        App.repaint();
     }
 
     // Callback
@@ -232,8 +302,22 @@ public class MessageItem extends Item {
             "(unsupported message)" :
             message.content;
 
-        textLines = Util.wordWrap(displayedContent, contentWidth, Fonts.plain);
-        height = Fonts.height*textLines.length;
+        if (!Settings.showEmojis) {
+            displayedContent = EmojiData.stripCustomTags(displayedContent);
+        }
+
+        if (Settings.showEmojis && EmojiData.hasEmoji(displayedContent)) {
+            layout = new MessageLayout(displayedContent, contentWidth);
+            textLines = null;
+            height = layout.getHeight();
+        }
+        else {
+            layout = null;
+            textLines = Util.wordWrap(displayedContent, contentWidth, Fonts.plain);
+            height = Fonts.height*textLines.length;
+        }
+
+        calcReactionRows();
 
         if (message.isForwarded) {
             height += Fonts.height;  // extra line for the "Forwarded" text
@@ -241,10 +325,39 @@ public class MessageItem extends Item {
 
         calcExtras();
 
+        if (message.reactions != null && message.reactions.size() > 0) {
+            height += reactionRows * (Fonts.height + 6) + 4;
+        }
+
         if (message.content.length() == 0 && !message.isUnsupported()) {
             // Make the message more closely connected to its attachment links
             // if the message has no text content
             height -= screen.itemPadding/2;
+        }
+    }
+
+    private void calcReactionRows() {
+        reactionRows = 0;
+        if (message.reactions == null || message.reactions.size() == 0) return;
+
+        int x = 0;
+        int available = contentWidth;
+
+        for (int i = 0; i < message.reactions.size(); i++) {
+            Reaction r = (Reaction) message.reactions.elementAt(i);
+            int chipWidth = 8 + getReactionEmojiWidth(r) + 4
+                + Fonts.plain.stringWidth(Integer.toString(r.count)) + 8;
+
+            if (chipWidth + 4 > available && x > 0) {
+                reactionRows++;
+                x = 0;
+                available = contentWidth;
+            }
+
+            x += chipWidth + 4;
+            available -= chipWidth + 4;
+
+            if (reactionRows == 0) reactionRows = 1;
         }
     }
 

@@ -65,6 +65,38 @@ public class DiscordUtil {
         return uuid.toString();
     }
 
+    /**
+     * Percent-encode a UTF-8 string for use as one URL path segment.
+     * J2ME has no URLEncoder in CLDC, so this is implemented manually.
+     */
+    public static String encodePathSegment(String text) {
+        byte[] bytes = Util.stringToBytes(text, "UTF-8");
+        StringBuffer out = new StringBuffer(bytes.length * 3);
+        final char[] hex = "0123456789ABCDEF".toCharArray();
+
+        for (int i = 0; i < bytes.length; i++) {
+            int b = bytes[i] & 0xFF;
+
+            if ((b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') ||
+                (b >= '0' && b <= '9') || b == '-' || b == '_' || b == '.' || b == '~') {
+                out.append((char) b);
+            }
+            else {
+                out.append('%');
+                out.append(hex[b >> 4]);
+                out.append(hex[b & 0x0F]);
+            }
+        }
+        return out.toString();
+    }
+
+    public static String encodeReaction(String name, String id) {
+        if (id != null && id.length() > 0) {
+            return encodePathSegment(name) + ":" + id;
+        }
+        return encodePathSegment(name);
+    }
+
     public static final long DISCORD_EPOCH = 1420070400000L;
 
     public static String formatTimestamp(String id, boolean use12hTime) {

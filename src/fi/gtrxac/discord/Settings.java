@@ -57,6 +57,12 @@ public class Settings implements RecordIOImpl {
      * When going to a message sending screen, send the typing indicator to show others that you are typing. 
      */
     public static boolean sendTypingIndicator = true;
+
+    /**
+     * Render Unicode and custom emoji as inline images.
+     * Disabling this also removes the emoji sprite sheet from memory.
+     */
+    public static boolean showEmojis = true;
     
     public void readData(DataInputStream dis) throws IOException {
         int numAccounts = dis.readInt();
@@ -88,6 +94,14 @@ public class Settings implements RecordIOImpl {
         use12hTime = dis.readBoolean();
         messageLoadCount = dis.readUnsignedByte();
         sendTypingIndicator = dis.readBoolean();
+
+        // Added in the Resymbian fork; old settings records simply end here.
+        try {
+            showEmojis = dis.readBoolean();
+        }
+        catch (IOException e) {
+            showEmojis = true;
+        }
     }
 
     public void writeData(DataOutputStream dos) throws IOException {
@@ -118,6 +132,7 @@ public class Settings implements RecordIOImpl {
         dos.writeBoolean(use12hTime);
         dos.writeByte(messageLoadCount);
         dos.writeBoolean(sendTypingIndicator);
+        dos.writeBoolean(showEmojis);
     }
 
     private Settings() {}
@@ -141,6 +156,7 @@ public class Settings implements RecordIOImpl {
         Theme.load();
         AppCanvas.setTimeFormat(use12hTime);
         IconManager.reset();
+        if (!showEmojis) EmojiData.unloadSheet();
     }
 
     static {
