@@ -97,13 +97,24 @@ public class Platform extends Canvas {
 
 		// On some Motorola phones (seemingly those with only one font size, like the V3 and L6)
 		// drawRoundRect() will draw with a width and height one pixel larger than specified
-		Image img = Image.createImage(5, 5);
-		Graphics g = img.getGraphics();
-		g.setColor(0x000000);
-		g.drawRoundRect(0, 0, 3, 3, 2, 2);
-		int[] pixel = new int[1];
-		img.getRGB(pixel, 0, 5, 4, 1, 1, 1);
-		hasRoundRectSizeBug = ((pixel[0] & 0x00FFFFFF) == 0x000000);
+		boolean roundRectBug = false;
+		try {
+			Image img = Image.createImage(5, 5);
+			Graphics g = img.getGraphics();
+			g.setColor(0x000000);
+			g.drawRoundRect(0, 0, 3, 3, 2, 2);
+			int[] pixel = new int[1];
+			// Sample the bottom-right pixel of the 5x5 image. Using x=5 is
+			// out of bounds (valid x is 0..4) and Nokia S60 throws
+			// IllegalArgumentException here, killing the static initializer.
+			img.getRGB(pixel, 0, 4, 4, 1, 1, 1);
+			roundRectBug = ((pixel[0] & 0x00FFFFFF) == 0x000000);
+		}
+		catch (Throwable e) {
+			// A probe must never prevent the MIDlet from starting.
+			roundRectBug = false;
+		}
+		hasRoundRectSizeBug = roundRectBug;
 
 		// Which type of Connector(s) to prefer/use for TLS on different platforms:
 
