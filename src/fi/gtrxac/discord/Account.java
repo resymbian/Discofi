@@ -292,7 +292,16 @@ public class Account {
 
     public AbstractJSON handleJSONResponse(int responseCode, String responseText) throws DiscordException {
         checkApiResponse(responseCode, responseText);
-        return JSON.get(responseText);
+
+        try {
+            return JSON.get(responseText);
+        }
+        catch (JSONException e) {
+            // A captcha/block page, a captive portal or a truncated body is not
+            // JSON. Throwing the RuntimeException out of here used to kill the
+            // HTTP thread and leave the screen on "Loading..." forever.
+            throw new DiscordException("Server did not return JSON (a block page or a broken TLS connection)");
+        }
     }
 
     /**

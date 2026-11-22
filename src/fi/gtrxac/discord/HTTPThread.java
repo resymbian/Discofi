@@ -95,6 +95,13 @@ public class HTTPThread extends Thread {
         catch (DiscordException e) {
             e.show();
         }
+        catch (RuntimeException e) {
+            // Anything unexpected while parsing a response used to kill this
+            // thread silently: the screen kept its "Loading..." item forever
+            // and the app looked frozen. Surface it instead.
+            e.printStackTrace();
+            new DiscordException(new Exception(e.toString())).show();
+        }
     }
 
     private void runPasswordLogin() throws DiscordException {
