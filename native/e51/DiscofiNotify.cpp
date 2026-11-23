@@ -8,13 +8,20 @@
  * Protocol (one connection per notification):
  *   writeUTF(title)   - Java modified UTF-8, 2-byte big-endian length
  *   writeUTF(text)    - same
- *   read 1 byte       - 1 = note displayed, 0 = error
+ *   read 1 byte       - 1 = stored, 0 = error
  *
- * Only the note API is used. The earlier version also wrote an incoming SMS into
- * Messaging's Inbox through CMsvSession, but the S60 3.1 C++ SDK ships the
- * msvapi headers without the import libraries (msvapi.dso/.lib are not in
- * epoc32/release/armv5/lib), so that path cannot be linked. A note is what the
- * user sees anyway; the Inbox copy was a convenience.
+ * Two visible effects per notification, in this order:
+ *   1. an Avkon global note over whatever is on screen, for the moment it
+ *      arrives;
+ *   2. an unread SMS-DELIVER entry in Messaging's Inbox, so the notification is
+ *      still there after the note fades - the same place a Bluetooth transfer
+ *      lands in.
+ *
+ * The Messaging API links with msgs.lib, not msvapi.lib: this SDK exports
+ * CMsvSession/CMsvEntry/CClientMtmRegistry from msgs, the SMS MTM from smcm,
+ * and the rich-text pieces from etext. Writing the SMS-DELIVER header directly
+ * is deliberate - CSmsClientMtm::SaveMessageL would create an outgoing
+ * (SMS-SUBMIT) PDU, which is not what a received notification is.
  *
  * Build with native/e51/docker (GnuPoc toolchain + S60 SDK). See README.md.
  */
@@ -27,10 +34,28 @@
 #include <aknnotifystd.h>
 #include <avkon.hrh>
 
+// Messaging: store the notification as a received SMS in Inbox.
+#include <msvapi.h>
+#include <msvids.h>
+#include <msvuids.h>
+#include <mtclreg.h>
+#include <smsclnt.h>
+#include <smut.h>
+#include <smuthdr.h>
+#include <txtrich.h>
+#include <txtfmlyr.h>
+
 const TUint KDiscofiPort = 4711;
 const TUint32 KDiscofiLoopback = INET_ADDR(127, 0, 0, 1);
 const TInt KMaxFieldLength = 512;
 const TInt KMaxNoteLength = 160;
+
+/** CMsvSession requires an observer, but we do not need its events. */
+class TNullMsvObserver : public MMsvSessionObserver
+{
+public:
+    void HandleSessionEventL(TMsvSessionEvent, TAny*, TAny*, TAny*) {}
+};
 
 /** RSocket::Recv until the descriptor is full. */
 static void ReadExactL(RSocket& aSocket, TDes8& aBuffer)
@@ -118,6 +143,87 @@ static HBufC* ReadUtfL(RSocket& aSocket)
 }
 
 /**
+ * Store the notification as an incoming SMS in the phone's Messaging Inbox.
+ *
+ * Do not call SaveMessageL(): that creates an SMS-SUBMIT (outgoing) PDU. We
+ * write an SMS-DELIVER header plus body directly to the message store, then
+ * mark the entry complete, visible and unread, which is what makes it appear
+ * in Inbox with the unread count the way a received message does.
+ */
+static void CreateInboxSmsL(CMsvSession& aSession, const TDesC& aSender,
+    const TDesC& aText)
+{
+    CClientMtmRegistry* registry = CClientMtmRegistry::NewL(aSession);
+    CleanupStack::PushL(registry);
+
+    CSmsClientMtm* sms = static_cast<CSmsClientMtm*>(
+        registry->NewMtmL(KUidMsgTypeSMS));
+    if (sms == NULL)
+    {
+        CleanupStack::PopAndDestroy(registry);
+        User::Leave(KErrNotSupported);
+    }
+    CleanupStack::PushL(sms);
+
+    sms->SwitchCurrentEntryL(KMsvGlobalInBoxIndexEntryId);
+    sms->RestoreServiceAndSettingsL();
+
+    TMsvEntry entry;
+    entry.iDate.HomeTime();
+    entry.SetInPreparation(ETrue);
+    entry.iMtm = KUidMsgTypeSMS;
+    entry.iType = KUidMsvMessageEntry;
+    entry.iServiceId = sms->ServiceId();
+    entry.iDetails.Set(aSender);
+
+    TPtrC preview(aText.Left(12));
+    entry.iDescription.Set(preview);
+    entry.SetSendingState(KMsvSendStateNotApplicable);
+    entry.SetUnread(ETrue);
+    entry.SetNew(ETrue);
+
+    sms->Entry().CreateL(entry);
+    TMsvId newId = entry.Id();
+    sms->SwitchCurrentEntryL(newId);
+
+    CParaFormatLayer* para = CParaFormatLayer::NewL();
+    CleanupStack::PushL(para);
+    CCharFormatLayer* chars = CCharFormatLayer::NewL();
+    CleanupStack::PushL(chars);
+    CRichText* rich = CRichText::NewL(para, chars);
+    CleanupStack::PushL(rich);
+    rich->InsertL(0, aText);
+
+    CSmsHeader* header = CSmsHeader::NewL(CSmsPDU::ESmsDeliver, *rich);
+    CleanupStack::PushL(header);
+    header->SetFromAddressL(aSender);
+    header->Deliver().SetServiceCenterTimeStamp(entry.iDate);
+
+    CMsvStore* store = sms->Entry().EditStoreL();
+    CleanupStack::PushL(store);
+    header->StoreL(*store);
+    store->StoreBodyTextL(*rich);
+    store->CommitL();
+
+    CleanupStack::PopAndDestroy(store);
+    CleanupStack::PopAndDestroy(header);
+    CleanupStack::PopAndDestroy(rich);
+    CleanupStack::PopAndDestroy(chars);
+    CleanupStack::PopAndDestroy(para);
+
+    TMsvEntry stored = sms->Entry().Entry();
+    stored.SetInPreparation(EFalse);
+    stored.SetComplete(ETrue);
+    stored.SetVisible(ETrue);
+    stored.iDetails.Set(aSender);
+    stored.iDescription.Set(preview);
+    sms->Entry().ChangeL(stored);
+
+    CleanupStack::PopAndDestroy(sms);
+    CleanupStack::PopAndDestroy(registry);
+}
+
+/**
  * Show the note. Newlines become spaces: a global note is one or two lines and
  * the J2ME side already folds multi-line previews, but a title built from a
  * chat name can still arrive with one.
@@ -136,7 +242,8 @@ static void ShowNotificationL(const TDesC& aTitle, const TDesC& aText)
     CleanupStack::PopAndDestroy(note);
 }
 
-static void HandleConnectionL(RSocket& aConnection, TBool& aOk)
+static void HandleConnectionL(CMsvSession& aSession, RSocket& aConnection,
+    TBool& aOk)
 {
     HBufC* title = ReadUtfL(aConnection);
     CleanupStack::PushL(title);
@@ -144,7 +251,13 @@ static void HandleConnectionL(RSocket& aConnection, TBool& aOk)
     CleanupStack::PushL(text);
 
     ShowNotificationL(*title, *text);
+
+    // The Inbox entry is the part that survives the note. A messaging write can
+    // fail - no SMS service configured, the server refusing the store - and
+    // that must not turn a shown note into an error answer.
+    TRAPD(inboxError, CreateInboxSmsL(aSession, *title, *text));
     aOk = ETrue;
+    (void)inboxError;
 
     CleanupStack::PopAndDestroy(text);
     CleanupStack::PopAndDestroy(title);
@@ -163,6 +276,10 @@ static void AnswerL(RSocket& aSocket, TBool aOk)
 
 static void ServeL()
 {
+    TNullMsvObserver msvObserver;
+    CMsvSession* messages = CMsvSession::OpenSyncL(msvObserver);
+    CleanupStack::PushL(messages);
+
     RSocketServ socketServer;
     User::LeaveIfError(socketServer.Connect());
     CleanupClosePushL(socketServer);
@@ -188,7 +305,7 @@ static void ServeL()
         CleanupClosePushL(connection);
 
         TBool ok = EFalse;
-        TRAPD(handlerError, HandleConnectionL(connection, ok));
+        TRAPD(handlerError, HandleConnectionL(*messages, connection, ok));
         (void)handlerError;
 
         TRAPD(answerError, AnswerL(connection, ok));
@@ -199,6 +316,7 @@ static void ServeL()
 
     CleanupStack::PopAndDestroy(&listener);
     CleanupStack::PopAndDestroy(&socketServer);
+    CleanupStack::PopAndDestroy(messages);
 }
 
 GLDEF_C TInt E32Main()

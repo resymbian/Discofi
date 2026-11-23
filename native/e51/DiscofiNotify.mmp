@@ -16,3 +16,7 @@ LIBRARY insock.lib
 LIBRARY aknnotify.lib
 LIBRARY eiksrv.lib
 LIBRARY bafl.lib
+LIBRARY msgs.lib
+LIBRARY smcm.lib
+LIBRARY etext.lib
+LIBRARY gsmu.lib

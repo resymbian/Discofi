@@ -2,7 +2,8 @@
 
 The E51's Java runtime has **no** Nokia UI soft notifications and **no** Pigler
 support. This small native EXE is the missing piece: it listens on
-`127.0.0.1:4711` and shows an Avkon global note. Any MIDlet that speaks the
+`127.0.0.1:4711`, shows an Avkon global note and stores the notification as an
+unread received-SMS entry in Messaging's Inbox. Any MIDlet that speaks the
 protocol below can use it - Discofi does, and so does ResyGram.
 
 ## Status
@@ -13,15 +14,30 @@ Built and signed here, with the S60 3rd Edition FP1 SDK inside Docker:
 native/e51/out/DiscofiNotify.sisx      (signed, self-signed certificate)
 ```
 
-Only the note API is used. An earlier version also wrote an incoming SMS into
-Messaging's Inbox through `CMsvSession`; the S60 3.1 C++ SDK ships the `msvapi`
-headers **without** the import libraries (`msvapi.dso`/`.lib` are not under
-`epoc32/release/armv5/lib`), so that half could never link and was removed. The
-note is what the user sees; the Inbox copy was a convenience.
+Each notification produces two things:
 
-What has *not* been verified is the note appearing on a real handset: it is
-linked against the real Avkon libraries and signed, but nothing in this
-environment can run S60 3.1.
+1. a global note over whatever is on screen, for the seconds it lasts;
+2. an entry in **Messaging -> Inbox**, unread, with the title as the sender and
+   the text as the body - the same place a Bluetooth transfer lands in, and it
+   stays after the note fades.
+
+The Inbox half writes an SMS-DELIVER header plus body directly to the message
+store. `CSmsClientMtm::SaveMessageL()` would create an SMS-SUBMIT (an outgoing
+message) and must not be used for this. The link libraries are `msgs` (the
+messaging server client: `CMsvSession`, `CClientMtmRegistry`), `smcm` (the SMS
+MTM: `CSmsClientMtm`, `CSmsHeader`), `etext` (rich text) and `gsmu` (the PDU
+classes). There is no `msvapi.lib` in this SDK; that name is only the header.
+
+The message is not sent over the network and carries no PDU from an operator:
+it is a local store entry. The phone may still offer Reply on it, and replies
+would be real SMS to a sender that is not a phone number, so treat it as a
+notification log, not a chat.
+
+What has *not* been verified is either effect on a real handset: it is linked
+against the real Avkon and Messaging libraries and signed, but nothing in this
+environment can run S60 3.1. If the messaging store refuses the write (no SMS
+service configured, capability check), the note is still shown and the protocol
+still answers `1`; the Inbox copy is the part that can silently not happen.
 
 ## Build
 
@@ -78,7 +94,8 @@ One connection per notification:
 
 * `writeUTF(title)`
 * `writeUTF(text)`
-* read one byte: `1` = displayed, `0` = error
+* read one byte: `1` = note shown (and the Inbox write was attempted),
+  `0` = error
 
 `writeUTF` is Java's modified UTF-8 with a two-byte big-endian length. The
 native side decodes it, so accented text and emoji work. `ResyGram` writes those
