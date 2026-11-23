@@ -1,9 +1,9 @@
 /**
- * DiscofiNotify - tiny native companion for Nokia E51 / S60 3rd Edition FP1.
+ * NotiHelper - the native notification bridge for Nokia E51 / S60 3rd Edition FP1.
  *
  * The E51 Java runtime has no Nokia soft notifications and no Pigler support,
- * so Discofi's J2ME poller sends notifications to this process over a local
- * TCP socket, and this process shows an Avkon global note.
+ * so the J2ME clients (Discofi, ResyGram) send notifications to this process
+ * over a local TCP socket, and it turns them into a note and an Inbox entry.
  *
  * Protocol (one connection per notification):
  *   writeUTF(title)   - Java modified UTF-8, 2-byte big-endian length
@@ -45,8 +45,8 @@
 #include <txtrich.h>
 #include <txtfmlyr.h>
 
-const TUint KDiscofiPort = 4711;
-const TUint32 KDiscofiLoopback = INET_ADDR(127, 0, 0, 1);
+const TUint KNotiHelperPort = 4711;
+const TUint32 KNotiHelperLoopback = INET_ADDR(127, 0, 0, 1);
 const TInt KMaxFieldLength = 512;
 const TInt KMaxNoteLength = 160;
 
@@ -290,8 +290,8 @@ static void ServeL()
     CleanupClosePushL(listener);
 
     TInetAddr address;
-    address.SetAddress(KDiscofiLoopback);
-    address.SetPort(KDiscofiPort);
+    address.SetAddress(KNotiHelperLoopback);
+    address.SetPort(KNotiHelperPort);
     User::LeaveIfError(listener.Bind(address));
     User::LeaveIfError(listener.Listen(4));
 

@@ -1,9 +1,0 @@
-&EN
-#{"Discofi Notify"},(0xA0000D15),1,0,0
-
-%{"Resymbian"}
-:"Resymbian"
-
-; The agent only displays notes. Open4All is not required by the note API,
-; but is normally already active for the TLS-patched Discofi setup anyway.
-"DiscofiNotify.exe"-"!:\sys\bin\DiscofiNotify.exe"

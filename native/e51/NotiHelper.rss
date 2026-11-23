@@ -5,18 +5,18 @@
 #include <appinfo.rh>
 
 RESOURCE RSS_SIGNATURE {}
-RESOURCE TBUF { buf = "Discofi Notify"; }
+RESOURCE TBUF { buf = "NotiHelper"; }
 RESOURCE EIK_APP_INFO {}
 
 RESOURCE APP_REGISTRATION_INFO
     {
-    app_file = "DiscofiNotify";
-    localisable_resource_file = "\\resource\\apps\\DiscofiNotify";
+    app_file = "NotiHelper";
+    localisable_resource_file = "\\resource\\apps\\NotiHelper";
     localisable_resource_id = R_LOCALISABLE_APP_INFO;
     }
 
 RESOURCE R_LOCALISABLE_APP_INFO
     {
-    caption = "Discofi Notify";
-    short_caption = "DiscofiN";
+    caption = "NotiHelper";
+    short_caption = "NotiHlp";
     }

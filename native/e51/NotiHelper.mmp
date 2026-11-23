@@ -1,11 +1,11 @@
-TARGET DiscofiNotify.exe
+TARGET NotiHelper.exe
 TARGETTYPE exe
 UID 0xA0000D15
 
 CAPABILITY NetworkServices ReadUserData WriteUserData LocalServices
 
 SOURCEPATH .
-SOURCE DiscofiNotify.cpp
+SOURCE NotiHelper.cpp
 
 SYSTEMINCLUDE \epoc32\include
 

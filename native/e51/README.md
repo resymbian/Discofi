@@ -1,4 +1,4 @@
-# DiscofiNotify (Nokia E51 / S60 3rd FP1)
+# NotiHelper (Nokia E51 / S60 3rd FP1)
 
 The E51's Java runtime has **no** Nokia UI soft notifications and **no** Pigler
 support. This small native EXE is the missing piece: it listens on
@@ -11,7 +11,7 @@ protocol below can use it - Discofi does, and so does ResyGram.
 Built and signed here, with the S60 3rd Edition FP1 SDK inside Docker:
 
 ```
-native/e51/out/DiscofiNotify.sisx      (signed, self-signed certificate)
+native/e51/out/NotiHelper.sisx      (signed, self-signed certificate)
 ```
 
 Each notification produces two things:
@@ -79,14 +79,16 @@ with `No vendor name specified`.
 
 1. Keep Open4All and the installserver patch active (already needed for the
    TLS-patched Discofi JAR).
-2. Install `DiscofiNotify.sisx`.
-3. Launch **Discofi Notify** once after each reboot. It has no visible UI; it
+2. Install `NotiHelper.sisx`. The UID is the same one the earlier
+   `DiscofiNotify` package used, so it replaces that install instead of sitting
+   beside it.
+3. Launch **NotiHelper** once after each reboot. It has no visible UI; it
    just starts the loopback listener.
 4. In Discofi: **Options -> Settings -> Notifications -> Background
    notifications = On**, then choose **Send test notification**. In ResyGram:
    **Settings -> Notifications**, then **Test notification** in the chat list
    menu. A system note saying `<title>: Test notification...` confirms the
-   bridge works.
+   bridge works, and the same text appears in **Messaging -> Inbox**.
 
 ## Protocol
 

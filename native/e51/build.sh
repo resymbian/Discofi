@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build DiscofiNotify.sisx with a Nokia S60 3rd Edition FP1 SDK.
+# Build NotiHelper.sisx with a Nokia S60 3rd Edition FP1 SDK.
 #
 #   EPOCROOT=/path/to/s60/sdk/ ./build.sh
 #
@@ -13,15 +13,15 @@ cd "$(dirname "$0")"
 bldmake bldfiles
 abld build gcce urel
 
-makesis ./DiscofiNotify.pkg ./DiscofiNotify_unsigned.sis
+makesis ./NotiHelper.pkg ./NotiHelper_unsigned.sis
 
 # Self-signed certificate is enough on a jailbroken E51 with Open4All.
 if [ ! -f discofi.key ] || [ ! -f discofi.cer ]; then
   openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 3650 \
     -keyout discofi.key -out discofi.cer \
-    -subj "/CN=Discofi Notify/OU=Resymbian/O=Resymbian/C=ES"
+    -subj "/CN=NotiHelper/OU=Resymbian/O=Resymbian/C=ES"
 fi
 
-signsis ./DiscofiNotify_unsigned.sis ./DiscofiNotify.sisx ./discofi.cer ./discofi.key ""
+signsis ./NotiHelper_unsigned.sis ./NotiHelper.sisx ./discofi.cer ./discofi.key ""
 
-echo "Built DiscofiNotify.sisx"
+echo "Built NotiHelper.sisx"
