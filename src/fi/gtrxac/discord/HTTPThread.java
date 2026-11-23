@@ -93,23 +93,39 @@ public class HTTPThread extends Thread {
             }
         }
         catch (DiscordException e) {
-            e.show();
+            showError(e);
         }
-        catch (RuntimeException e) {
+        catch (Throwable t) {
             // Anything unexpected while parsing a response used to kill this
             // thread silently: the screen kept its "Loading..." item forever
             // and the app looked frozen. Surface it instead.
-            e.printStackTrace();
-            new DiscordException(new Exception(e.toString())).show();
+            showError(t);
+        }
+    }
+
+    private static void showError(Throwable t) {
+        t.printStackTrace();
+
+        try {
+            if (t instanceof DiscordException) {
+                ((DiscordException) t).show();
+            }
+            else {
+                new DiscordException(new Exception(t.toString())).show();
+            }
+        }
+        catch (Throwable ignored) {
+            // Even error reporting must not be able to kill the worker.
         }
     }
 
     private void runPasswordLogin() throws DiscordException {
         ListScreen loadScreen = new ListScreen();
         loadScreen.addItem(new LoadingItem());
-        App.pushScreen(loadScreen);
 
         try {
+            App.pushScreen(loadScreen);
+
             // 1. fetch experiments which contains the fingerprint we need to use during the login flow
             // could also use /auth/fingerprint but it seems to be deprecated
             JSONObject experiments = (JSONObject)
@@ -159,7 +175,9 @@ public class HTTPThread extends Thread {
             App.pendingLoginInstanceID = loginResponse.getString("login_instance_id");
         }
         finally {
-            App.popScreen();
+            // Pop this exact screen: an error dialog may have been pushed on
+            // top of it, and a plain popScreen() would remove the dialog.
+            App.popScreen(loadScreen);
         }
 
         App.replaceScreen(new AuthCodeScreen());
@@ -170,11 +188,12 @@ public class HTTPThread extends Thread {
     private void runSubmitTotp() throws DiscordException {
         ListScreen loadScreen = new ListScreen();
         loadScreen.addItem(new LoadingItem());
-        App.pushScreen(loadScreen);
 
         String token = null;
 
         try {
+            App.pushScreen(loadScreen);
+
             JSONObject totpObject = new JSONObject();
             totpObject.put("code", totp);
             totpObject.put("ticket", App.pendingTicket);
@@ -191,7 +210,7 @@ public class HTTPThread extends Thread {
             token = totpResponse.getString("token");
         }
         finally {
-            App.popScreen();
+            App.popScreen(loadScreen);
         }
         
         App.loginCompleted(token);

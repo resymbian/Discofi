@@ -51,7 +51,7 @@ public abstract class Screen implements CommandListener {
 
     public void setTitle(String newTitle) {
         title = newTitle;
-        AppCanvas.instance.updateTitle();
+        AppBase.requestUiUpdate();
     }
 
     public String getTitle() {
@@ -96,9 +96,7 @@ public abstract class Screen implements CommandListener {
     }
 
     protected void updateCanvasCommands() {
-        if (AppCanvas.instance != null) {
-            AppCanvas.instance.updateCommands();
-        }
+        AppBase.requestUiUpdate();
     }
 
     // _________________________________________________________________________

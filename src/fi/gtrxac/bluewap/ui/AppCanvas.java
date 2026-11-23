@@ -52,13 +52,13 @@ public class AppCanvas extends Canvas {
         KeyRepeatThread.instance.start();
     }
 
-    /** Stop the canvas-owned threads when the MIDlet is destroyed. */
-    public static void shutdown() {
-        // The clock thread checks AppBase.isRunning() in short sleeps, so
-        // there is nothing to interrupt explicitly (CLDC 1.0 has no
-        // Thread.interrupt()).
-        instance = null;
-    }
+    /**
+     * Called when the MIDlet is destroyed. The clock thread checks
+     * AppBase.isRunning(), so it stops on its own. Keep the canvas reference:
+     * nulling it here made pending paint callbacks throw NullPointerException
+     * during shutdown, which S60 turned into a stuck error screen.
+     */
+    public static void shutdown() {}
 
     protected void paint(Graphics g) {
         Screen curr = AppBase.getCurrentScreen();
@@ -70,7 +70,15 @@ public class AppCanvas extends Canvas {
 
         if (curr != null) {
             g.setClip(0, 0, getWidth(), getHeight());
-            curr.prepareAndDraw(g);
+
+            // A bad item must not take down the whole event thread: that would
+            // leave the phone showing its own non-working Options/Exit menu.
+            try {
+                curr.prepareAndDraw(g);
+            }
+            catch (Throwable t) {
+                t.printStackTrace();
+            }
         }
 
         int softkeyBarY = getHeight();
@@ -249,7 +257,7 @@ public class AppCanvas extends Canvas {
     protected void sizeChanged(int w, int h) {
         Fonts.reloadFonts();
         AppBase.recalcAllScreens();
-        updateTitle();
+        AppBase.requestUiUpdate();
     }
 
     private static volatile boolean isKeyPressed = false;
@@ -283,7 +291,12 @@ public class AppCanvas extends Canvas {
         Screen curr = AppBase.getCurrentScreen();
         if (curr == null) return;
 
-        curr.keyEvent(keyCode, getGameAction(keyCode));
+        try {
+            curr.keyEvent(keyCode, getGameAction(keyCode));
+        }
+        catch (Throwable t) {
+            t.printStackTrace();
+        }
         AppBase.repaint();
     }
 
@@ -300,7 +313,12 @@ public class AppCanvas extends Canvas {
 
         Screen curr = AppBase.getCurrentScreen();
         if (curr != null) {
-            curr.pointerPressed(x, y);
+            try {
+                curr.pointerPressed(x, y);
+            }
+            catch (Throwable t) {
+                t.printStackTrace();
+            }
             AppBase.repaint();
         }
     }
@@ -310,7 +328,12 @@ public class AppCanvas extends Canvas {
 
         Screen curr = AppBase.getCurrentScreen();
         if (curr != null) {
-            curr.pointerDragged(x, y - getBaseY());
+            try {
+                curr.pointerDragged(x, y - getBaseY());
+            }
+            catch (Throwable t) {
+                t.printStackTrace();
+            }
             AppBase.repaint();
         }
     }
@@ -321,7 +344,12 @@ public class AppCanvas extends Canvas {
 
         Screen curr = AppBase.getCurrentScreen();
         if (curr != null) {
-            curr.pointerReleased(x, y);
+            try {
+                curr.pointerReleased(x, y);
+            }
+            catch (Throwable t) {
+                t.printStackTrace();
+            }
             AppBase.repaint();
         }
     }
@@ -361,7 +389,12 @@ public class AppCanvas extends Canvas {
 
     private void leftSoftkeyPressed() {
         if (optionsCommandShown) {
-            AppBase.pushScreen(new OptionsScreen(remainingCommands));
+            try {
+                AppBase.pushScreen(new OptionsScreen(remainingCommands));
+            }
+            catch (Throwable t) {
+                t.printStackTrace();
+            }
         }
         else if (leftSideCommand != null) {
             runCommand(leftSideCommand);
@@ -377,10 +410,20 @@ public class AppCanvas extends Canvas {
     private void runCommand(Command c) {
         if (c == null) return;
 
-        CommandListener lis = AppBase.getCurrentScreen().getCommandListener();
+        Screen curr = AppBase.getCurrentScreen();
+        if (curr == null) return;
+
+        CommandListener lis = curr.getCommandListener();
         if (lis == null) return;
 
-        lis.commandAction(c, this);
+        // A command handler that throws must not take down the event thread:
+        // the phone would replace the canvas with its own dead Options/Exit UI.
+        try {
+            lis.commandAction(c, this);
+        }
+        catch (Throwable t) {
+            t.printStackTrace();
+        }
     }
 
     void updateCommands() {

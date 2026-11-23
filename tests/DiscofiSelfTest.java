@@ -3,6 +3,8 @@ package fi.gtrxac.discord;
 import cc.nnproject.json.JSONObject;
 import fi.gtrxac.bluewap.ui.AppBase;
 import fi.gtrxac.bluewap.ui.AppCanvas;
+import fi.gtrxac.bluewap.ui.Dialog;
+import fi.gtrxac.bluewap.ui.ListScreen;
 import fi.gtrxac.bluewap.ui.Screen;
 import fi.gtrxac.discord.model.Channel;
 import java.util.Vector;
@@ -62,6 +64,20 @@ public class DiscofiSelfTest extends App {
         check("startup shows a screen", AppBase.getCurrentScreen() != null);
         check("app property from descriptor",
             AppBase.instance.getAppProperty("MIDlet-Name") != null);
+
+        // A loading screen can have an error dialog pushed on top of it. The
+        // loader must remove only its own screen, never the dialog.
+        Screen original = AppBase.getCurrentScreen();
+        ListScreen loader = new ListScreen();
+        App.pushScreen(loader);
+        Dialog errorDialog = new Dialog("test error");
+        App.pushScreen(errorDialog);
+        App.popScreen(loader);
+        check("popScreen(Screen) keeps dialog on top",
+            AppBase.getCurrentScreen() == errorDialog);
+        App.popScreen();
+        check("dialog closes back to original screen",
+            AppBase.getCurrentScreen() == original);
 
         check("emoji data available", EmojiData.isAvailable());
         check("emoji table not empty", EmojiData.getCount() > 0);

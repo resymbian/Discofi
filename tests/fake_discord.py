@@ -13,6 +13,7 @@ it stopped.
 import json
 import os
 import sys
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # FAKE_DISCORD_MODE=html answers every route with a Cloudflare-style block page,
@@ -22,8 +23,15 @@ MODE = os.environ.get("FAKE_DISCORD_MODE", "json")
 GUILD_ID = "100000000000000010"
 DM_ID = "100000000000000020"
 GROUP_ID = "100000000000000030"
+TOKEN = "MTAwMDAwMDAwMDAwMDAwMDAx.GGGGGG.abcdef"
 
 ROUTES = {
+    "/api/v9/experiments": {
+        "fingerprint": "0.0.0.fake-fingerprint",
+    },
+    "/api/v9/auth/login": {
+        "token": TOKEN,
+    },
     "/api/v9/users/@me": {
         "id": "100000000000000001",
         "username": "tester",
@@ -73,9 +81,25 @@ class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def do_GET(self):
+        self.handle_request("GET")
+
+    def do_POST(self):
+        self.handle_request("POST")
+
+    def handle_request(self, method):
         path = self.path.split("?")[0]
-        sys.stdout.write("GET %s\n" % self.path)
+        sys.stdout.write("%s %s\n" % (method, self.path))
         sys.stdout.flush()
+
+        length = int(self.headers.get("Content-Length", 0))
+        if length:
+            self.rfile.read(length)
+
+        if path == "/hang" or (MODE == "hang_login" and path == "/api/v9/auth/login"):
+            # Accept the connection but never answer, like a stalled proxy.
+            # The client's HTTP queue must close it after the timeout.
+            time.sleep(30)
+            return
 
         if MODE == "html":
             data = (b"<!DOCTYPE html><html><head><title>Attention Required! "

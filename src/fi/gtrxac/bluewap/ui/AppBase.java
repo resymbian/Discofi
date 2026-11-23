@@ -111,15 +111,49 @@ public abstract class AppBase extends MIDlet {
     //  Screen management
     // _________________________________________________________________________
     //
-    private static Stack screens = new Stack();
+    private static final Stack screens = new Stack();
+
+    // Screen stack mutations happen on both the event thread and the network
+    // worker threads. The stack itself is guarded here, and LCDUI operations
+    // (commands, title) are posted to the event thread instead of being made
+    // from whichever thread happened to push a dialog or a loading screen.
+    private static final Object UI_LOCK = new Object();
+    private static boolean uiUpdatePending;
+
+    private static final Runnable uiUpdateRunnable = new Runnable() {
+        public void run() {
+            AppCanvas canvas;
+
+            synchronized (UI_LOCK) {
+                uiUpdatePending = false;
+                canvas = AppCanvas.instance;
+
+                if (canvas != null) {
+                    canvas.updateCommands();
+                    canvas.updateTitle();
+                }
+            }
+
+            repaint();
+        }
+    };
+
+    /** Schedule command/title refresh on the MIDP event thread. */
+    static void requestUiUpdate() {
+        synchronized (UI_LOCK) {
+            if (disp == null || AppCanvas.instance == null || uiUpdatePending) return;
+            uiUpdatePending = true;
+            try {
+                disp.callSerially(uiUpdateRunnable);
+            }
+            catch (RuntimeException e) {
+                uiUpdatePending = false;
+            }
+        }
+    }
 
     private static void screenChanged() {
-        AppCanvas canvas = AppCanvas.instance;
-        if (canvas == null) return;
-
-        canvas.updateCommands();
-        canvas.updateTitle();
-        repaint();
+        requestUiUpdate();
     }
 
     // _________________________________________________________________________
@@ -137,54 +171,98 @@ public abstract class AppBase extends MIDlet {
      * Add a new screen to the top of the screen stack and show it.
      */
     public static void pushScreen(Screen s) {
-        screens.push(s);
+        if (s == null) return;
+
+        synchronized (UI_LOCK) {
+            screens.push(s);
+        }
         screenChanged();
     }
 
     /**
-     * Close the screen from the top of the screen stack and go back to the previous screen. 
+     * Close the screen from the top of the screen stack and go back to the previous screen.
      */
     public static void popScreen() {
-        screens.pop();
+        synchronized (UI_LOCK) {
+            if (!screens.empty()) screens.pop();
+        }
         screenChanged();
+    }
+
+    /**
+     * Close a specific screen, even if another screen (for example an error
+     * dialog) has been pushed on top of it in the meantime. Loading screens
+     * use this so their finally block cannot remove the wrong screen.
+     */
+    public static void popScreen(Screen s) {
+        if (s == null) return;
+
+        boolean removed = false;
+        synchronized (UI_LOCK) {
+            for (int i = screens.size() - 1; i >= 0; i--) {
+                if (screens.elementAt(i) == s) {
+                    screens.removeElementAt(i);
+                    removed = true;
+                    break;
+                }
+            }
+        }
+
+        if (removed) screenChanged();
     }
 
     /**
      * Replace the currently shown screen with another screen.
      */
     public static void replaceScreen(Screen s) {
-        screens.pop();
-        pushScreen(s);
+        if (s == null) return;
+
+        synchronized (UI_LOCK) {
+            if (!screens.empty()) screens.pop();
+            screens.push(s);
+        }
+        screenChanged();
     }
 
     /**
      * Close all screens from the screen stack and show a new screen.
      */
     public static void replaceAllScreens(Screen s) {
-        screens.setSize(0);
-        pushScreen(s);
+        if (s == null) return;
+
+        synchronized (UI_LOCK) {
+            screens.setSize(0);
+            screens.push(s);
+        }
+        screenChanged();
     }
 
-    /**
-     * Get the currently shown screen.
-     */
     public static Screen getCurrentScreen() {
-        if (screens.empty()) return null;
-        return (Screen) screens.peek();
+        synchronized (UI_LOCK) {
+            if (screens.empty()) return null;
+            return (Screen) screens.peek();
+        }
     }
 
-    /**
-     * Get the screen that is below the currently shown screen.
-     */
     public static Screen getPreviousScreen() {
-        if (screens.size() <= 1) return null;
-        return (Screen) screens.elementAt(screens.size() - 2);
+        synchronized (UI_LOCK) {
+            if (screens.size() <= 1) return null;
+            return (Screen) screens.elementAt(screens.size() - 2);
+        }
     }
 
     public static void recalcAllScreens() {
-        for (int i = 0; i < screens.size(); i++) {
-            Screen s = (Screen) screens.elementAt(i);
-            s.needRecalc();
+        Screen[] all;
+
+        synchronized (UI_LOCK) {
+            all = new Screen[screens.size()];
+            for (int i = 0; i < all.length; i++) {
+                all[i] = (Screen) screens.elementAt(i);
+            }
+        }
+
+        for (int i = 0; i < all.length; i++) {
+            all[i].needRecalc();
         }
     }
 

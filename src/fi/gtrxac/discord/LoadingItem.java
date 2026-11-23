@@ -136,8 +136,11 @@ public class LoadingItem extends Item implements Runnable {
         long loopStartTime;
 
         while ((loopStartTime = System.currentTimeMillis()) < threadExpiryTime) {
+            // serviceRepaints() from this worker thread used to block until
+            // the event thread was free. On S60 that froze the whole UI while
+            // a login request was in flight. A plain repaint is enough: the
+            // animation re-arms itself on the next draw.
             App.repaint();
-            AppCanvas.instance.serviceRepaints();
 
             long paintTime = System.currentTimeMillis() - loopStartTime;
 

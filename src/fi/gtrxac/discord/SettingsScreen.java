@@ -19,6 +19,11 @@ public class SettingsScreen extends ListScreen implements CommandListener {
     private TextFieldItem messageCountField;
     private RadioButtonGroup sendTypingGroup;
     private RadioButtonGroup emojiGroup;
+    private RadioButtonGroup notificationsGroup;
+    private RadioButtonGroup notificationIntervalGroup;
+    private RadioButtonGroup notifyDMsGroup;
+    private RadioButtonGroup notifyMentionsGroup;
+    private ButtonItem testNotificationButton;
 
     public SettingsScreen() {
         super();
@@ -84,6 +89,41 @@ public class SettingsScreen extends ListScreen implements CommandListener {
 
         emojiGroup.setTickedIndex(Settings.showEmojis ? 0 : 1);
 
+        addItem(new BlankItem(0));
+        addItem(new ChannelCategoryItem("Notifications"));
+
+        notificationsGroup = new RadioButtonGroup();
+        addItem("Background notifications:");
+        addItem(new RadioButtonItem(notificationsGroup, "On"));
+        addItem(new RadioButtonItem(notificationsGroup, "Off"));
+
+        notificationsGroup.setTickedIndex(Settings.notificationsEnabled ? 0 : 1);
+
+        notificationIntervalGroup = new RadioButtonGroup();
+        addItem("Check every:");
+        addItem(new RadioButtonItem(notificationIntervalGroup, "1 min"));
+        addItem(new RadioButtonItem(notificationIntervalGroup, "5 min"));
+        addItem(new RadioButtonItem(notificationIntervalGroup, "15 min"));
+
+        int intervalIndex = Settings.notificationIntervalMinutes <= 1 ? 0 :
+            Settings.notificationIntervalMinutes <= 5 ? 1 : 2;
+        notificationIntervalGroup.setTickedIndex(intervalIndex);
+
+        notifyDMsGroup = new RadioButtonGroup();
+        addItem("Notify direct messages:");
+        addItem(new RadioButtonItem(notifyDMsGroup, "On"));
+        addItem(new RadioButtonItem(notifyDMsGroup, "Off"));
+        notifyDMsGroup.setTickedIndex(Settings.notifyDMs ? 0 : 1);
+
+        notifyMentionsGroup = new RadioButtonGroup();
+        addItem("Notify mentions:");
+        addItem(new RadioButtonItem(notifyMentionsGroup, "On"));
+        addItem(new RadioButtonItem(notifyMentionsGroup, "Off"));
+        notifyMentionsGroup.setTickedIndex(Settings.notifyMentions ? 0 : 1);
+
+        testNotificationButton = new ButtonItem("Send test notification");
+        addItem(testNotificationButton);
+
         setCommandListener(this);
         addCommand(new Command("Back", Command.BACK, CMD_BACK));
     }
@@ -98,6 +138,24 @@ public class SettingsScreen extends ListScreen implements CommandListener {
         Settings.messageLoadCount = parseMessageLoadCount();
         Settings.sendTypingIndicator = (sendTypingGroup.getTickedIndex() == 0);
         Settings.showEmojis = (emojiGroup.getTickedIndex() == 0);
+
+        boolean enabled = notificationsGroup.getTickedIndex() == 0;
+        int[] intervals = { 1, 5, 15 };
+        int interval = intervals[notificationIntervalGroup.getTickedIndex()];
+        boolean notifyDMs = notifyDMsGroup.getTickedIndex() == 0;
+        boolean notifyMentions = notifyMentionsGroup.getTickedIndex() == 0;
+
+        boolean restartPoller = (enabled != Settings.notificationsEnabled) ||
+            (interval != Settings.notificationIntervalMinutes) ||
+            (notifyDMs != Settings.notifyDMs) ||
+            (notifyMentions != Settings.notifyMentions);
+
+        Settings.notificationsEnabled = enabled;
+        Settings.notificationIntervalMinutes = interval;
+        Settings.notifyDMs = notifyDMs;
+        Settings.notifyMentions = notifyMentions;
+
+        if (restartPoller) NotificationPoller.settingsChanged();
 
         // HTTPQueue.maxSlots = Integer.parseInt(connLimitField.getValue());
         // if (HTTPQueue.maxSlots < 1) HTTPQueue.maxSlots = 1;
@@ -132,6 +190,16 @@ public class SettingsScreen extends ListScreen implements CommandListener {
     }
 
     public void itemSelected(Item i) {
+        if (i == testNotificationButton) {
+            boolean ok = NotificationBridge.post(
+                "Discofi", "Test notification from Discofi");
+
+            App.pushScreen(new Dialog(ok ?
+                "Notification sent. The native agent is working." :
+                "No native agent answered. Install NotiHelper.sisx and start it once."));
+            return;
+        }
+
         writeSettings();
         Settings.refresh();
     }

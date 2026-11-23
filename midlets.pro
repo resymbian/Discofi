@@ -17,6 +17,8 @@
 //#ifdef DEBUG
 -dontoptimize
 -dontobfuscate
+# Timeout tests call these from the test MIDlet, outside the app itself.
+-keep class com.gtrxac.discord.HTTPQueue { public *; }
 //#else
 # Comment/uncomment below: multiple passes will take much longer to compile, but can be used when publishing a release
 # -optimizationpasses 5

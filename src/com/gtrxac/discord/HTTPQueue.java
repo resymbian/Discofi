@@ -6,25 +6,29 @@ import java.io.*;
 import java.util.*;
 import javax.microedition.io.*;
 
+/**
+ * Keeps track of open HTTP connections and closes them when a request takes
+ * too long. Closing the connection is the only portable way to interrupt a
+ * blocking Connector.open()/getResponseCode()/read() in MIDP.
+ */
 public class HTTPQueue implements Runnable {
     // Time before a connection will be closed for timeout.
-    private static final int TIMEOUT_MS = 60000;
+    private static final int DEFAULT_TIMEOUT_MS = 60000;
 
     // Max amount of possible HTTP connections
     // Nokia S40 has a limit of 8 HTTP connections, if they run out, you get "No response entries available"
     public static int maxSlots = 4;
 
-    private long timestamp;
-    public InputStream is;
-    public OutputStream os;
-    public HttpConnection hc;
-
-    private static volatile Vector queueItems = new Vector(maxSlots);
+    private static final Vector queueItems = new Vector(maxSlots);
     private static volatile boolean running = true;
+    private static volatile int timeoutMs = DEFAULT_TIMEOUT_MS;
 
-    public static void shutdown() {
-        running = false;
-    }
+    private final long timestamp;
+    private volatile boolean expired;
+
+    public volatile InputStream is;
+    public volatile OutputStream os;
+    public volatile HttpConnection hc;
 
     static {
         new Thread(new HTTPQueue()).start();
@@ -34,54 +38,106 @@ public class HTTPQueue implements Runnable {
         timestamp = System.currentTimeMillis();
     }
 
+    /** Overridable by tests; the default is one minute. */
+    public static void setTimeoutMs(int ms) {
+        if (ms > 0) timeoutMs = ms;
+    }
+
+    public static int getTimeoutMs() {
+        return timeoutMs;
+    }
+
+    /** Number of requests currently being tracked (used by the tests). */
+    public static int size() {
+        synchronized (queueItems) {
+            return queueItems.size();
+        }
+    }
+
     public static synchronized HTTPQueue newQueueItem() {
         // wait for available slot
         while (queueItems.size() >= maxSlots) {
-            // System.out.println("waiting, slots filled " + queueItems.size());
             Util.sleep(100);
         }
 
         HTTPQueue result = new HTTPQueue();
-        queueItems.addElement(result);
-        // System.out.println("Added");
+        synchronized (queueItems) {
+            queueItems.addElement(result);
+        }
         return result;
     }
 
     public void run() {
         while (running && AppBase.isRunning()) {
-            long expireTime = System.currentTimeMillis() + TIMEOUT_MS;
-            int closedCount = 0;
+            long now = System.currentTimeMillis();
+            int limit = timeoutMs;
 
-            for (int i = 0; i < queueItems.size(); ) {
-                HTTPQueue item = (HTTPQueue) queueItems.elementAt(i);
+            synchronized (queueItems) {
+                for (int i = 0; i < queueItems.size(); i++) {
+                    HTTPQueue item = (HTTPQueue) queueItems.elementAt(i);
 
-                if (item.timestamp >= expireTime) {
-                    item.close();
-                    queueItems.removeElementAt(i);
-                    closedCount++;
+                    // Count from when the request started, not from now: the
+                    // old comparison against now + TIMEOUT could never be true.
+                    if (!item.expired && now - item.timestamp >= limit) {
+                        item.expire();
+                    }
                 }
-                else i++;
             }
 
-            // System.out.println("Checked connections, closed " + closedCount + ", currently " + queueItems.size());
-            try {
-                Thread.sleep(5000);
-            }
-            catch (InterruptedException e) {
-                break;
-            }
+            Util.sleep(1000);
         }
     }
 
-    private void close() {
-        // System.out.println(this.toString() + " closed");
-        try { is.close(); } catch (Exception e) {}
-        try { os.close(); } catch (Exception e) {}
-        try { hc.close(); } catch (Exception e) {}
+    private void expire() {
+        expired = true;
+        // A request can still be inside Connector.open() at this point. The
+        // setters below close the transport as soon as it becomes available.
+        close();
     }
 
+    public boolean isExpired() {
+        return expired;
+    }
+
+    public void setConnection(HttpConnection connection) {
+        hc = connection;
+        if (expired) closeQuietly(connection);
+    }
+
+    public void setInputStream(InputStream stream) {
+        is = stream;
+        if (expired) closeQuietly(stream);
+    }
+
+    public void setOutputStream(OutputStream stream) {
+        os = stream;
+        if (expired) closeQuietly(stream);
+    }
+
+    public static void shutdown() {
+        running = false;
+    }
+
+    private static void closeQuietly(Object closeable) {
+        try {
+            if (closeable instanceof InputStream) ((InputStream) closeable).close();
+            else if (closeable instanceof OutputStream) ((OutputStream) closeable).close();
+            else if (closeable instanceof HttpConnection) ((HttpConnection) closeable).close();
+        }
+        catch (Exception e) {}
+    }
+
+    private void close() {
+        closeQuietly(is);
+        closeQuietly(os);
+        closeQuietly(hc);
+    }
+
+    /** Request has unblocked: release its slot even if it timed out. */
     public void finished() {
         close();
-        queueItems.removeElement(this);
+        synchronized (queueItems) {
+            queueItems.removeElement(this);
+        }
     }
 }

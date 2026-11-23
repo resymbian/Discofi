@@ -19,6 +19,10 @@ such as the **Nokia E51**.
 * Unread indicators are local read-state comparisons against each channel's
   `last_message_id`. They use no gateway and no extra HTTP requests; reads made
   on another device may not be reflected until this client acknowledges them.
+* Optional background notifications use REST polling (no gateway) and, on the
+  E51, a small native SISX companion called
+  [NotiHelper](https://github.com/resymbian/NotiHelper) that shows a system note
+  and leaves the same text in Messaging's Inbox.
 
 ## Installing: JAD or JAR?
 
@@ -83,6 +87,7 @@ This repo is for the J2ME version. There is a separate repo for the [Android ver
 
 ### Not planned
 * Gateway (not practical without a proxy, which is unsafe)
+* Real-time gateway push (the implemented notifications poll REST and can be delayed by up to the chosen interval)
 * Sending attachments (unsafe for third-party clients)
 * Friend requests (unsafe)
 * Joining servers (unsafe)

@@ -7,3 +7,8 @@ node_modules/
 /sdk/log.txt
 /sdk/proguard.jar
 /sdk/microemulator.jar
+
+# Local build/debug logs from working sessions.
+/build_check.log
+/ci_failed.log
+/watch*.txt

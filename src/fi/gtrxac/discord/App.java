@@ -25,6 +25,7 @@ public class App extends AppBase {
         // TLSTest.test();
         Settings.load();
         UnreadStore.init();
+        NotificationPoller.settingsChanged();
 
         Account acc = Accounts.getActive();
 
@@ -52,6 +53,11 @@ public class App extends AppBase {
     public void destroyApp(boolean unconditional) {
         // Save before the framework stops the UI threads and calls
         // notifyDestroyed(). Never let a save failure block the exit.
+        try {
+            NotificationPoller.stop();
+        }
+        catch (Throwable t) {}
+
         try {
             UnreadStore.saveIfDirty();
         }
@@ -91,6 +97,7 @@ public class App extends AppBase {
 
         Settings.save();
         pendingAccount = null;
+        NotificationPoller.settingsChanged();
         replaceAllScreens(new AccountListScreen());
     }
 }

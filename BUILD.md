@@ -34,6 +34,14 @@ dispatch:
    checks emoji lookup/rendering, reactions, the picker and the compose draft,
    then calls `destroyApp()` and requires `notifyDestroyed()` to end the
    process. A startup error or a stuck background thread fails CI.
+   It also runs `sdk/timeouttest.sh` and `sdk/logintest.sh` (both a successful
+   password login and a stalled one), which verify that a hung HTTP response
+   is closed, an error dialog replaces the loading screen, and the UI keeps
+   responding. `sdk/notificationtest.sh` checks the native-notification bridge
+   protocol (modified UTF-8 strings and the acknowledgement byte) in
+   MicroEmulator. The optional S60 C++ agent is a separate repository,
+   [resymbian/NotiHelper](https://github.com/resymbian/NotiHelper), and is not
+   built by this CI.
 8. Generates a signed SLSA build provenance attestation for every JAR, JAD and
    `SHA256SUMS` with `actions/attest-build-provenance`.
 9. Uploads the artifacts and publishes them as a GitHub prerelease on every

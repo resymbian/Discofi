@@ -50,6 +50,13 @@ jobs:
       - name: Smoke-test startup, emojis and shutdown
         run: ./sdk/test.sh
 
+      - name: Test HTTP timeout and password login recovery
+        run: |
+          ./sdk/timeouttest.sh
+          ./sdk/logintest.sh
+          FAKE_DISCORD_MODE=hang_login ./sdk/logintest.sh
+          ./sdk/notificationtest.sh
+
       - name: Show audit summary
         run: |
           cat bin/SHA256SUMS

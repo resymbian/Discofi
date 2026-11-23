@@ -63,6 +63,19 @@ public class Settings implements RecordIOImpl {
      * Disabling this also removes the emoji sprite sheet from memory.
      */
     public static boolean showEmojis = true;
+
+    /**
+     * Poll Discord in the background and send system notifications through the
+     * optional native Symbian agent. Off by default to avoid battery drain.
+     */
+    public static boolean notificationsEnabled = false;
+
+    /** Minutes between two background checks (1, 5 or 15). */
+    public static int notificationIntervalMinutes = 5;
+
+    /** Which events produce a notification. */
+    public static boolean notifyDMs = true;
+    public static boolean notifyMentions = true;
     
     public void readData(DataInputStream dis) throws IOException {
         int numAccounts = dis.readInt();
@@ -102,6 +115,16 @@ public class Settings implements RecordIOImpl {
         catch (IOException e) {
             showEmojis = true;
         }
+
+        // Background notifications were added later. Missing fields mean an
+        // older settings record, so keep the defaults above.
+        try {
+            notificationsEnabled = dis.readBoolean();
+            notificationIntervalMinutes = dis.readUnsignedByte();
+            notifyDMs = dis.readBoolean();
+            notifyMentions = dis.readBoolean();
+        }
+        catch (IOException e) {}
     }
 
     public void writeData(DataOutputStream dos) throws IOException {
@@ -133,6 +156,10 @@ public class Settings implements RecordIOImpl {
         dos.writeByte(messageLoadCount);
         dos.writeBoolean(sendTypingIndicator);
         dos.writeBoolean(showEmojis);
+        dos.writeBoolean(notificationsEnabled);
+        dos.writeByte(notificationIntervalMinutes);
+        dos.writeBoolean(notifyDMs);
+        dos.writeBoolean(notifyMentions);
     }
 
     private Settings() {}
