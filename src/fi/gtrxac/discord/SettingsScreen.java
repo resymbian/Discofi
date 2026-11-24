@@ -194,9 +194,15 @@ public class SettingsScreen extends ListScreen implements CommandListener {
             boolean ok = NotificationBridge.post(
                 "Discofi", "Test notification from Discofi");
 
-            App.pushScreen(new Dialog(ok ?
-                "Notification sent. The native agent is working." :
-                "No native agent answered. Install NotiHelper.sisx and start it once."));
+            String message;
+            if (ok) {
+                message = "Notification sent. The native agent is working.";
+            }
+            else {
+                message = "No native agent answered. Install NotiHelper.sisx and "
+                    + "start it once. (" + NotificationBridge.lastError + ")";
+            }
+            App.pushScreen(new Dialog(message));
             return;
         }
 

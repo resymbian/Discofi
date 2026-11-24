@@ -20,7 +20,19 @@ public class StandardHTTP extends HTTP {
 		super(method, url);
 	}
 
-	private static Object dispatchConnectorOpen(String url) throws Exception {
+	private Object dispatchConnectorOpen(String url) throws Exception {
+		// Symbian's javax.microedition HttpConnection rejects PUT/DELETE/PATCH
+		// before the request is sent. ModernConnector writes the method verbatim,
+		// so use it for those calls even though GET/POST stay on thepatched
+		// patched system connector. A failure falls back to the old path.
+		if (Platform.isSymbian &&
+			(method.equals("PUT") || method.equals("DELETE") || method.equals("PATCH"))) {
+			try {
+				return ModernConnector.open(url);
+			}
+			catch (Throwable ignored) {}
+		}
+
 		if (Platform.preferModernConnector) {
 			try {
 //#ifdef DEBUG

@@ -16,6 +16,9 @@ import javax.microedition.io.*;
 public class NotificationBridge {
     private static final String URL = "socket://127.0.0.1:4711";
 
+    /** Set on failure so Settings can say why, not just "no agent". */
+    public static String lastError;
+
     private static void closeQuietly(Object stream) {
         if (stream == null) return;
 
@@ -34,6 +37,7 @@ public class NotificationBridge {
         SocketConnection connection = null;
         DataInputStream in = null;
         DataOutputStream out = null;
+        lastError = null;
 
         try {
             connection = (SocketConnection) Connector.open(URL);
@@ -45,8 +49,12 @@ public class NotificationBridge {
             in = new DataInputStream(connection.openInputStream());
             return in.read() == 1;
         }
-        catch (Exception e) {
-            e.printStackTrace();
+        catch (Throwable t) {
+            // A SecurityException here means the JAD/manifest did not declare
+            // Connector.socket, not that NotiHelper is missing. Keep the exact
+            // reason for the Settings dialog and for bug reports.
+            lastError = t.toString();
+            t.printStackTrace();
             return false;
         }
         finally {

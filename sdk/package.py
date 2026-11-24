@@ -35,6 +35,7 @@ def make_jad(jar):
     wanted = (
         "MIDlet-Name", "MIDlet-Vendor", "MIDlet-Version", "MIDlet-1",
         "MicroEdition-Configuration", "MicroEdition-Profile",
+        "MIDlet-Permissions-Opt",
     )
     values = {}
     for line in manifest.splitlines():
@@ -57,6 +58,7 @@ def make_jad(jar):
         f"MIDlet-1: {values['MIDlet-1']}",
         f"MicroEdition-Configuration: {values['MicroEdition-Configuration']}",
         f"MicroEdition-Profile: {values['MicroEdition-Profile']}",
+        f"MIDlet-Permissions-Opt: {values['MIDlet-Permissions-Opt']}",
         f"MIDlet-Jar-URL: {name}",
         f"MIDlet-Jar-Size: {os.path.getsize(jar)}",
     ]
