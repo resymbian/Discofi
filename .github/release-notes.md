@@ -26,7 +26,7 @@ On Symbian S60v3 (including the E51) no signing certificate is required.
 Install the nnproject TLS 1.2 patch and jailbreak with
 RomPatcher/installserver first.
 
-This build fixes three E51 problems:
+This build fixes four E51 problems:
 
 * the JAD and manifest now declare `MIDlet-Permissions-Opt` for `socket`,
   `http` and file read/write. Without the socket permission S60 throws a
@@ -36,7 +36,9 @@ This build fixes three E51 problems:
   it behind that generic message;
 * reactions, edit and delete use ModernConnector on Symbian for `PUT`,
   `DELETE` and `PATCH`, because the platform's `HttpConnection` rejects those
-  methods before sending.
+  methods before sending;
+* the JAD generator unfolds wrapped manifest lines, so the permission list is
+  no longer truncated at the first 72-byte fold.
 
 Every build is smoke-tested headlessly for startup, emojis, reactions and
 shutdown.

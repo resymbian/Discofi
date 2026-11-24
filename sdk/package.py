@@ -27,7 +27,18 @@ def sha256(path):
 
 def read_manifest(jar):
     with zipfile.ZipFile(jar) as z:
-        return z.read("META-INF/MANIFEST.MF").decode("utf-8", "replace")
+        raw = z.read("META-INF/MANIFEST.MF").decode("utf-8", "replace")
+
+    # JAR manifests fold long attributes onto continuation lines starting with
+    # a space. Reading physical lines would truncate MIDlet-Permissions-Opt and
+    # quietly drop every permission after the first wrap on S60.
+    unfolded = []
+    for line in raw.splitlines():
+        if line.startswith(" ") and unfolded:
+            unfolded[-1] += line[1:]
+        else:
+            unfolded.append(line)
+    return "\n".join(unfolded)
 
 
 def make_jad(jar):
