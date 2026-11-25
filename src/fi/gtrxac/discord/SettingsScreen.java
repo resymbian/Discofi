@@ -191,25 +191,29 @@ public class SettingsScreen extends ListScreen implements CommandListener {
 
     public void itemSelected(Item i) {
         if (i == testNotificationButton) {
-            boolean ok = NotificationBridge.post(
-                "Discofi", "Test notification from Discofi");
+            new Thread(new Runnable() {
+                public void run() {
+                    boolean ok = NotificationBridge.post(
+                        "Discofi", "Test notification from Discofi");
 
-            String message;
-            if (ok) {
-                message = "Notification sent. The native agent is working.";
-            }
-            else {
-                String error = NotificationBridge.lastError;
-                if (error != null && error.indexOf("-34") >= 0) {
-                    message = "NotiHelper is not listening. Open its menu icon "
-                        + "once after reboot. (" + error + ")";
+                    String message;
+                    if (ok) {
+                        message = "Notification sent. The native agent is working.";
+                    }
+                    else {
+                        String error = NotificationBridge.lastError;
+                        if (error != null && error.indexOf("-34") >= 0) {
+                            message = "NotiHelper is not listening. Open its menu icon "
+                                + "once after reboot. (" + error + ")";
+                        }
+                        else {
+                            message = "No native agent answered. Install NotiHelper.sisx "
+                                + "and start it once. (" + error + ")";
+                        }
+                    }
+                    App.pushScreen(new Dialog(message));
                 }
-                else {
-                    message = "No native agent answered. Install NotiHelper.sisx "
-                        + "and start it once. (" + error + ")";
-                }
-            }
-            App.pushScreen(new Dialog(message));
+            }).start();
             return;
         }
 

@@ -44,7 +44,7 @@ public class NotificationBridge {
     }
 
     /** @return true when the native agent accepted the notification. */
-    public static boolean post(String title, String text) {
+    public static synchronized boolean post(String title, String text) {
         if (title == null) title = "Discofi";
         if (text == null) text = "";
         lastError = null;

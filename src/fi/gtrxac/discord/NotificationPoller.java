@@ -252,7 +252,7 @@ public class NotificationPoller implements Runnable {
         load();
 
         long interval = Math.max(1, Settings.notificationIntervalMinutes) * 60000L;
-        long nextCheck = System.currentTimeMillis() + 5000;
+        long nextCheck = System.currentTimeMillis() + 15000;
 
         while (running && AppBase.isRunning()) {
             if (System.currentTimeMillis() >= nextCheck) {

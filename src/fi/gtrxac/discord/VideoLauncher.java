@@ -127,9 +127,11 @@ public final class VideoLauncher {
 
     /** Called when the MIDlet resumes: a previous handoff is over. */
     public static void resumed() {
-        playing = false;
-        launching = false;
-        cleanupStale();
+        if (playing) {
+            playing = false;
+            launching = false;
+            cleanupStale();
+        }
     }
 
     /** Called when the video screen is closed without playing the file. */
@@ -333,21 +335,25 @@ public final class VideoLauncher {
 //#ifndef NO_FILECONNECTION
         if (!Platform.supportsFileConnection) return;
 
-        deleteFiles(directoryUrl(), false);
+        new Thread(new Runnable() {
+            public void run() {
+                deleteFiles(directoryUrl(), false);
 
-        // Leftovers from the old build, which saved into the system folder.
-        String[] keys = { "fileconn.dir.videos", "fileconn.dir.music",
-            "fileconn.dir.photos" };
-        for (int i = 0; i < keys.length; i++) {
-            String legacy = System.getProperty(keys[i]);
-            if (legacy == null || legacy.length() == 0) continue;
-            if (legacy.indexOf("file:") != 0) {
-                if (legacy.startsWith("/")) legacy = legacy.substring(1);
-                legacy = "file:///" + legacy;
+                // Leftovers from the old build, which saved into the system folder.
+                String[] keys = { "fileconn.dir.videos", "fileconn.dir.music",
+                    "fileconn.dir.photos" };
+                for (int i = 0; i < keys.length; i++) {
+                    String legacy = System.getProperty(keys[i]);
+                    if (legacy == null || legacy.length() == 0) continue;
+                    if (legacy.indexOf("file:") != 0) {
+                        if (legacy.startsWith("/")) legacy = legacy.substring(1);
+                        legacy = "file:///" + legacy;
+                    }
+                    if (!legacy.endsWith("/")) legacy += "/";
+                    deleteFiles(legacy, true);
+                }
             }
-            if (!legacy.endsWith("/")) legacy += "/";
-            deleteFiles(legacy, true);
-        }
+        }).start();
 //#endif
     }
 

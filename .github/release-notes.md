@@ -3,6 +3,12 @@
 > tested in the emulator/debug demo, not yet with a real Discord account on a
 > Nokia E51. Back up your data and expect rough edges.
 
+## 1.4.7
+
+- Fix startup permission prompts: `VideoLauncher.resumed()` no longer touches the filesystem on cold startup. Filesystem cleanup is only run when returning from active video playback or via the manual "Borrar vídeos" command, eliminating repeated file read/write permission prompts on launch.
+- Non-blocking notification testing: testing the native notification bridge from Settings now runs in a worker thread so the UI thread cannot freeze.
+- Synchronized notification bridge: `NotificationBridge.post` is now thread-synchronized to prevent concurrent socket requests between background polling and UI tests.
+
 ## 1.4.6
 
 Notification bridge reliability:
