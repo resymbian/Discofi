@@ -21,6 +21,14 @@ public class App extends AppBase {
     public static String pendingFingerprint;
     public static String pendingLoginInstanceID;
 
+    public void startApp() {
+        // Also runs when the phone returns from the external video player.
+        // MIDP cannot tell us that the viewer closed, so this is where the
+        // temporary local copy is removed.
+        VideoLauncher.resumed();
+        super.startApp();
+    }
+
     public void init() {
         // TLSTest.test();
         Settings.load();

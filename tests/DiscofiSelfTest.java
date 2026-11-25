@@ -87,7 +87,8 @@ public class DiscofiSelfTest extends App {
         videoData.put("content_type", "video/mp4");
         videoData.put("filename", "../../clip.mp4");
         videoData.put("url", "http://example.invalid/clip.mp4");
-        videoData.put("proxy_url", "http://example.invalid/preview");
+        videoData.put("proxy_url",
+            "https://media.discordapp.net/attachments/1/2/3/clip.mp4");
         videoData.put("width", 640);
         videoData.put("height", 360);
         Attachment video = new Attachment(videoData);
@@ -95,6 +96,13 @@ public class DiscofiSelfTest extends App {
         check("video download name sanitized",
             "clip.mp4".equals(VideoLauncher.safeFileName(video)));
         check("video launcher starts idle", !VideoLauncher.isLaunching());
+
+        String lowVideo = video.getVideoUrl("http://media.example.net", 320, 240);
+        check("video uses the small media proxy URL",
+            lowVideo != null && lowVideo.startsWith("http://media.example.net/attachments")
+                && lowVideo.indexOf("format=mp4") > 0
+                && lowVideo.indexOf("width=320") > 0
+                && lowVideo.indexOf("height=180") > 0);
 
         check("emoji data available", EmojiData.isAvailable());
         check("emoji table not empty", EmojiData.getCount() > 0);

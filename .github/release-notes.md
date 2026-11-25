@@ -47,7 +47,12 @@ This build fixes six E51 problems:
   `DELETE` and `PATCH`, because the platform's `HttpConnection` rejects those
   methods before sending;
 * the JAD generator unfolds wrapped manifest lines, so the permission list is
-  no longer truncated at the first 72-byte fold.
+  no longer truncated at the first 72-byte fold;
+* videos are requested as a small MP4 through Discord's media proxy and saved
+  in a private `Discofi/Videos` folder. If the proxy cannot resize them or the
+  result is still over 12 MB, the phone streams the original URL instead of
+  storing it. The folder is emptied whenever Discofi returns to the foreground,
+  so no watched copy is left behind.
 
 Every build is smoke-tested headlessly for startup, emojis, reactions and
 shutdown.

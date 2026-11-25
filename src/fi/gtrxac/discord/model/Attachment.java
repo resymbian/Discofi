@@ -96,6 +96,44 @@ public class Attachment {
             "format=jpeg&quality=low&width=" + actualSize[0] + "&height=" + actualSize[1]);
     }
 
+    /**
+     * Small MP4 through Discord's media proxy. The proxy is the only place that
+     * can resize a video without a server of our own; if it ignores the query
+     * (or the attachment has no proxy URL), the caller falls back to the
+     * original CDN file.
+     */
+    public String getVideoUrl(String mediaProxyUrl, int maxWidth, int maxHeight) {
+        if (proxyUrl == null || proxyUrl.length() == 0) return null;
+
+        final String official = "https://media.discordapp.net";
+        final String officialInsecure = "http://media.discordapp.net";
+        String route;
+        if (proxyUrl.startsWith(official)) {
+            route = proxyUrl.substring(official.length());
+        }
+        else if (proxyUrl.startsWith(officialInsecure)) {
+            route = proxyUrl.substring(officialInsecure.length());
+        }
+        else {
+            // An unknown proxy host may not understand Discord transformations.
+            return null;
+        }
+
+        String base = (mediaProxyUrl == null || mediaProxyUrl.length() == 0)
+            ? officialInsecure : mediaProxyUrl;
+
+        int[] actualSize;
+        if (width > 0 && height > 0) {
+            actualSize = Util.resizeFit(width, height, maxWidth, maxHeight);
+        }
+        else {
+            actualSize = new int[] { maxWidth, maxHeight };
+        }
+
+        return appendQuery(base + route,
+            "format=mp4&quality=low&width=" + actualSize[0] + "&height=" + actualSize[1]);
+    }
+
     private static String appendQuery(String url, String query) {
         if (url == null) return null;
 
