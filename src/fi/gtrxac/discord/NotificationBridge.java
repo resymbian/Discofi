@@ -53,8 +53,10 @@ public class NotificationBridge {
         for (int i = 0; i < URLS.length; i++) {
             boolean ok = postTo(URLS[i], title, text);
             if (ok) return true;
-            // A permission failure repeats on every alias.
-            if (lastError != null && lastError.indexOf("SecurityException") >= 0) {
+            // A permission failure repeats on every alias; a note refused by the
+            // bridge means the connection succeeded, so do not try localhost.
+            if (lastError != null && (lastError.indexOf("SecurityException") >= 0
+                    || lastError.indexOf("refused") >= 0)) {
                 break;
             }
             reason = lastError;

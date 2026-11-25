@@ -3,6 +3,11 @@
 > tested in the emulator/debug demo, not yet with a real Discord account on a
 > Nokia E51. Back up your data and expect rough edges.
 
+## 1.4.6
+
+Notification bridge reliability:
+- When connecting to NotiHelper, if the native bridge refuses the note (i.e. connection succeeded but bridge returned 0), do not retry `socket://localhost:4711`. On Symbian OS, resolving `localhost` causes DNS failure `-34` (`KErrCouldNotConnect`), which was masking the bridge status.
+
 ## 1.4.5
 
 The main menu and the account menu now both have a "Borrar vídeos" command that
