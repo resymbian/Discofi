@@ -5,6 +5,8 @@ import fi.gtrxac.bluewap.*;
 import fi.gtrxac.bluewap.http.*;
 import fi.gtrxac.bluewap.client.*;
 import fi.gtrxac.bluewap.ui.*;
+import javax.microedition.lcdui.Alert;
+import javax.microedition.lcdui.AlertType;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Displayable;
@@ -18,6 +20,7 @@ public class AccountListScreen extends ListScreen implements CommandListener {
     public static final int CMD_DELETE = 4;
     public static final int CMD_SETTINGS = 5;
     public static final int CMD_DEMO = 6;
+    public static final int CMD_CLEAN_VIDEOS = 7;
     public static final int CMD_DELETE_PROMPT_YES = 100;
     public static final int CMD_DELETE_PROMPT_NO = 101;
 
@@ -61,6 +64,7 @@ public class AccountListScreen extends ListScreen implements CommandListener {
         addCommand(new Command("Edit", Command.ITEM, CMD_EDIT));
         addCommand(new Command("Delete", Command.ITEM, CMD_DELETE));
         addCommand(new Command("Settings", Command.SCREEN, CMD_SETTINGS));
+        addCommand(new Command("Borrar vídeos", Command.SCREEN, CMD_CLEAN_VIDEOS));
 //#ifdef DEBUG
         addCommand(new Command("Demo", Command.SCREEN, CMD_DEMO));
 //#endif
@@ -86,6 +90,16 @@ public class AccountListScreen extends ListScreen implements CommandListener {
             }
             case CMD_SETTINGS: {
                 App.pushScreen(new SettingsScreen());
+                break;
+            }
+            case CMD_CLEAN_VIDEOS: {
+                try {
+                    VideoLauncher.cleanupStale();
+                }
+                catch (Throwable ignored) {}
+                Alert alert = new Alert("Discofi", "Vídeos temporales borrados",
+                    null, AlertType.INFO);
+                AppBase.disp.setCurrent(alert, d);
                 break;
             }
 //#ifdef DEBUG

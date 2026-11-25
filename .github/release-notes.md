@@ -3,6 +3,11 @@
 > tested in the emulator/debug demo, not yet with a real Discord account on a
 > Nokia E51. Back up your data and expect rough edges.
 
+## 1.4.4
+
+The account menu now has a "Borrar vídeos" command that removes the temporary
+video files on demand and confirms with a short alert.
+
 ## Which file do I install?
 
 Install **`discofi.jar`**. It contains the application and all resources,

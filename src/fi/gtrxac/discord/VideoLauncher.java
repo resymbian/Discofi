@@ -329,7 +329,7 @@ public final class VideoLauncher {
      * removed when Discofi is activated again (or on the next launch, when the
      * platform destroyed the MIDlet after platformRequest()).
      */
-    private static void cleanupStale() {
+    public static void cleanupStale() {
 //#ifndef NO_FILECONNECTION
         if (!Platform.supportsFileConnection) return;
 

@@ -96,6 +96,10 @@ public class DiscofiSelfTest extends App {
         check("video download name sanitized",
             "clip.mp4".equals(VideoLauncher.safeFileName(video)));
         check("video launcher starts idle", !VideoLauncher.isLaunching());
+        // The account menu needs the cleanup entry point to be public; calling
+        // it here verifies that other classes can reach it.
+        VideoLauncher.cleanupStale();
+        check("video cleanup leaves launcher idle", !VideoLauncher.isLaunching());
 
         String lowVideo = video.getVideoUrl("http://media.example.net", 320, 240);
         check("video uses the small media proxy URL",
