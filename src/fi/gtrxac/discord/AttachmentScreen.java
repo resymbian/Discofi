@@ -14,12 +14,16 @@ public class AttachmentScreen extends Screen implements CommandListener {
     public static final int CMD_BACK = 0;
     public static final int CMD_ZOOM_IN = 1;
     public static final int CMD_ZOOM_OUT = 2;
+    public static final int CMD_PLAY = 3;
 
     private static final Command zoomInCommand =
         new Command("Zoom in", Command.SCREEN, CMD_ZOOM_IN);
 
     private static final Command zoomOutCommand =
         new Command("Zoom out", Command.SCREEN, CMD_ZOOM_OUT);
+
+    private static final Command playCommand =
+        new Command("Play", Command.SCREEN, CMD_PLAY);
 
     private static final int MIN_ZOOM_LEVEL = 1;
     private static final int MAX_ZOOM_LEVEL = 4;
@@ -36,18 +40,53 @@ public class AttachmentScreen extends Screen implements CommandListener {
     private int zoomWidth;
     private int zoomHeight;
 
+    // Videos are not previewed as a still frame: this screen shows the
+    // download state and offers Play once the local file is ready.
+    private final boolean video;
+    private String videoPath;
+    private String videoStatus;
+
     public AttachmentScreen(Attachment att) {
+        this(att, false);
+    }
+
+    public AttachmentScreen(Attachment att, boolean videoMode) {
         super(0);
         setTitle(att.filename);
 
         attachment = att;
+        video = videoMode;
         zoomLevel = MIN_ZOOM_LEVEL;
         // zoomWidth and zoomHeight are set in recalc()
         // where getWidth() and getHeight() are available
 
         setCommandListener(this);
         addCommand(new Command("Back", Command.BACK, CMD_BACK));
-        addCommand(zoomInCommand);
+        if (video) {
+            videoStatus = "Downloading video...";
+        }
+        else {
+            addCommand(zoomInCommand);
+        }
+    }
+
+    // Download callbacks from VideoLauncher. These can arrive on its worker
+    // thread; the UI helpers used here are already thread-safe.
+    public void videoStatus(String status) {
+        videoStatus = status;
+        needRecalc();
+    }
+
+    public void videoReady(String path) {
+        videoPath = path;
+        videoStatus = "Ready to play";
+        addCommand(playCommand);
+        needRecalc();
+    }
+
+    public void videoFailed(String reason) {
+        videoStatus = "Download failed: " + reason;
+        needRecalc();
     }
 
     private void loadImage() {
@@ -90,6 +129,11 @@ public class AttachmentScreen extends Screen implements CommandListener {
         g.setColor(0x000000);
         g.fillRect(0, 0, getWidth(), getHeight());
 
+        if (video) {
+            drawStatus(g, (videoStatus == null) ? "Video" : videoStatus);
+            return;
+        }
+
         if (attachmentImage != null) {
             g.drawImage(
                 attachmentImage,
@@ -99,20 +143,27 @@ public class AttachmentScreen extends Screen implements CommandListener {
         }
 
         if (isLoading || loadFailed) {
-            String status = loadFailed ? "Failed to load image" : "Loading...";
-            int textWidth = Fonts.plain.stringWidth(status);
-            int textX = getWidth()/2 - textWidth/2;
-            int textY = getHeight()/2 - Fonts.height/2;
-
-            g.fillRect(textX, textY, textWidth, Fonts.height);
-
-            g.setColor(0xFFFFFF);
-            g.setFont(Fonts.plain);
-            g.drawString(status, textX, textY, 0);
+            drawStatus(g, loadFailed ? "Failed to load image" : "Loading...");
         }
     }
 
+    private void drawStatus(Graphics g, String status) {
+        status = Util.stringToLength(status, 48);
+        int textWidth = Fonts.plain.stringWidth(status);
+        int textX = getWidth()/2 - textWidth/2;
+        int textY = getHeight()/2 - Fonts.height/2;
+
+        g.fillRect(textX, textY, textWidth, Fonts.height);
+
+        g.setColor(0xFFFFFF);
+        g.setFont(Fonts.plain);
+        g.drawString(status, textX, textY, 0);
+    }
+
     public void recalc() {
+        // Do not fetch a JPEG preview for a video: it is only the first frame.
+        if (video) return;
+
         if (attachmentImage == null && !isLoading && !loadFailed) {
             int[] fitSize = Util.resizeFit(
                 attachment.width, attachment.height, getWidth(), getHeight());
@@ -127,6 +178,13 @@ public class AttachmentScreen extends Screen implements CommandListener {
     }
 
     public void keyEvent(int keyCode, int gameAction) {
+        if (video) {
+            if (gameAction == Canvas.FIRE && videoPath != null) {
+                VideoLauncher.play(videoPath);
+            }
+            return;
+        }
+
         if (attachmentImage == null) return;
 
         int increment = Math.min(getWidth(), getHeight())/5;
@@ -209,7 +267,12 @@ public class AttachmentScreen extends Screen implements CommandListener {
     public void commandAction(Command c, Displayable d) {
         switch (c.getPriority()) {
             case CMD_BACK: {
+                if (video) VideoLauncher.cancel();
                 App.popScreen();
+                break;
+            }
+            case CMD_PLAY: {
+                if (videoPath != null) VideoLauncher.play(videoPath);
                 break;
             }
             case CMD_ZOOM_IN: {

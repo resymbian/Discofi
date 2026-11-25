@@ -68,7 +68,7 @@ This repo is for the J2ME version. There is a separate repo for the [Android ver
 * Channel list with categories
 * Chat screen with pagination, avatars, replies, timestamps
 * Sending messages and replies
-* Viewing attachments
+* Viewing images and opening videos in the phone's player
 * Message editing and deleting
 * Jumping to replies
 * Settings for theme, message count, etc.

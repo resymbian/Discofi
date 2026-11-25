@@ -6,6 +6,7 @@ import fi.gtrxac.bluewap.ui.AppCanvas;
 import fi.gtrxac.bluewap.ui.Dialog;
 import fi.gtrxac.bluewap.ui.ListScreen;
 import fi.gtrxac.bluewap.ui.Screen;
+import fi.gtrxac.discord.model.Attachment;
 import fi.gtrxac.discord.model.Channel;
 import java.util.Vector;
 import javax.microedition.lcdui.Canvas;
@@ -78,6 +79,22 @@ public class DiscofiSelfTest extends App {
         App.popScreen();
         check("dialog closes back to original screen",
             AppBase.getCurrentScreen() == original);
+
+        // Video attachments must take the player path, not the JPEG preview:
+        // the proxy image is only the first frame. Download names are
+        // sanitised before they become file:// URLs for platformRequest().
+        JSONObject videoData = new JSONObject();
+        videoData.put("content_type", "video/mp4");
+        videoData.put("filename", "../../clip.mp4");
+        videoData.put("url", "http://example.invalid/clip.mp4");
+        videoData.put("proxy_url", "http://example.invalid/preview");
+        videoData.put("width", 640);
+        videoData.put("height", 360);
+        Attachment video = new Attachment(videoData);
+        check("video attachment detected", video.isVideo);
+        check("video download name sanitized",
+            "clip.mp4".equals(VideoLauncher.safeFileName(video)));
+        check("video launcher starts idle", !VideoLauncher.isLaunching());
 
         check("emoji data available", EmojiData.isAvailable());
         check("emoji table not empty", EmojiData.getCount() > 0);

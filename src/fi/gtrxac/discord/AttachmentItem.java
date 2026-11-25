@@ -24,14 +24,21 @@ public class AttachmentItem extends SingleLineLinkItem {
     }
 
     public void itemSelected() {
-        if (attachment.previewable) {
+        // A video's proxy image is only its first frame. Route flagged videos
+        // to the local-file player before the preview branch can show it.
+        if (attachment.isVideo) {
+            VideoLauncher.open(attachment);
+        }
+        else if (attachment.previewable) {
             App.pushScreen(new AttachmentScreen(attachment));
         }
         else {
             try {
                 Account acc = Accounts.getActive();
                 String url = attachment.getDownloadUrl(acc.getCdnUrl());
-                App.instance.platformRequest(url);
+                if (App.instance.platformRequest(url)) {
+                    App.instance.destroyApp(false);
+                }
             }
             catch (Exception e) {
                 new DiscordException(e).show();

@@ -26,8 +26,17 @@ On Symbian S60v3 (including the E51) no signing certificate is required.
 Install the nnproject TLS 1.2 patch and jailbreak with
 RomPatcher/installserver first.
 
-This build fixes four E51 problems:
+This build fixes six E51 problems:
 
+* videos are downloaded through Discofi's patched HTTP stack to a local file
+  and handed to the phone's player with `platformRequest()`. Tapping a video no
+  longer leaves the media-proxy first frame on screen; a Play command appears
+  when the download is ready, and a true `platformRequest()` result now stops
+  the MIDlet cleanly;
+* the notification bridge tries both `127.0.0.1` and `localhost`, trims fields
+  by encoded UTF-8 bytes, and keeps the exact error for the Settings dialog.
+  A `-34` now says to open NotiHelper's menu icon once after reboot instead of
+  guessing that no agent is installed;
 * the JAD and manifest now declare `MIDlet-Permissions-Opt` for `socket`,
   `http` and file read/write. Without the socket permission S60 throws a
   `SecurityException` on the first `socket://127.0.0.1:4711` open, which the

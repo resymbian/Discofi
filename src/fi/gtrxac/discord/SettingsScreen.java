@@ -199,8 +199,15 @@ public class SettingsScreen extends ListScreen implements CommandListener {
                 message = "Notification sent. The native agent is working.";
             }
             else {
-                message = "No native agent answered. Install NotiHelper.sisx and "
-                    + "start it once. (" + NotificationBridge.lastError + ")";
+                String error = NotificationBridge.lastError;
+                if (error != null && error.indexOf("-34") >= 0) {
+                    message = "NotiHelper is not listening. Open its menu icon "
+                        + "once after reboot. (" + error + ")";
+                }
+                else {
+                    message = "No native agent answered. Install NotiHelper.sisx "
+                        + "and start it once. (" + error + ")";
+                }
             }
             App.pushScreen(new Dialog(message));
             return;
