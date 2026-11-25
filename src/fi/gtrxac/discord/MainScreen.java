@@ -4,6 +4,8 @@ import fi.gtrxac.discord.model.*;
 import java.util.*;
 import fi.gtrxac.bluewap.ui.*;
 import fi.gtrxac.bluewap.*;
+import javax.microedition.lcdui.Alert;
+import javax.microedition.lcdui.AlertType;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Displayable;
@@ -15,6 +17,7 @@ public class MainScreen extends TabbedListScreen implements CommandListener, Lis
     public static final int CMD_REFRESH = 2;
     public static final int CMD_SETTINGS = 3;
     public static final int CMD_LOG_OUT = 4;
+    public static final int CMD_CLEAN_VIDEOS = 5;
     public static final int CMD_QUIT_PROMPT_YES = 100;
     public static final int CMD_QUIT_PROMPT_NO = 101;
 
@@ -49,6 +52,8 @@ public class MainScreen extends TabbedListScreen implements CommandListener, Lis
         addCommand(new Command("Refresh", Command.SCREEN, CMD_REFRESH));
         addCommand(new Command("Settings", Command.SCREEN, CMD_SETTINGS));
         addCommand(new Command("Log out", Command.SCREEN, CMD_LOG_OUT));
+        addCommand(new Command("Borrar vídeos", Command.SCREEN,
+            CMD_CLEAN_VIDEOS));
     }
 
     private void createGuildsTab() {
@@ -190,6 +195,16 @@ public class MainScreen extends TabbedListScreen implements CommandListener, Lis
             }
             case CMD_LOG_OUT: {
                 App.replaceScreen(new AccountListScreen());
+                break;
+            }
+            case CMD_CLEAN_VIDEOS: {
+                try {
+                    VideoLauncher.cleanupStale();
+                }
+                catch (Throwable ignored) {}
+                Alert alert = new Alert("Discofi", "Vídeos temporales borrados",
+                    null, AlertType.INFO);
+                AppBase.disp.setCurrent(alert, d);
                 break;
             }
             case CMD_QUIT_PROMPT_YES: {
