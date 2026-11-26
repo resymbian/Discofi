@@ -81,7 +81,23 @@ public class NotificationBridge {
             out.flush();
 
             in = new DataInputStream(connection.openInputStream());
-            if (in.read() != 1) {
+            final SocketConnection conn = connection;
+            final boolean[] done = new boolean[1];
+            Thread timer = new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        Thread.sleep(3500);
+                        if (!done[0] && conn != null) {
+                            conn.close();
+                        }
+                    }
+                    catch (Throwable ignored) {}
+                }
+            });
+            timer.start();
+            int reply = in.read();
+            done[0] = true;
+            if (reply != 1) {
                 lastError = "the bridge refused the note";
                 return false;
             }

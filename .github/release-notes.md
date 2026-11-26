@@ -3,6 +3,10 @@
 > tested in the emulator/debug demo, not yet with a real Discord account on a
 > Nokia E51. Back up your data and expect rough edges.
 
+## 1.4.8
+
+- Non-blocking bridge read timeout: added a 3.5s timeout watcher on `NotificationBridge.postTo()` so the worker thread cannot hang indefinitely if NotiHelper or the socket bridge connection stalls during handshake or reply.
+
 ## 1.4.7
 
 - Fix startup permission prompts: `VideoLauncher.resumed()` no longer touches the filesystem on cold startup. Filesystem cleanup is only run when returning from active video playback or via the manual "Borrar vídeos" command, eliminating repeated file read/write permission prompts on launch.
