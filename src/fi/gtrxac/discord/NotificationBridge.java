@@ -86,7 +86,7 @@ public class NotificationBridge {
             Thread timer = new Thread(new Runnable() {
                 public void run() {
                     try {
-                        Thread.sleep(3500);
+                        Thread.sleep(25000);
                         if (!done[0] && conn != null) {
                             conn.close();
                         }
