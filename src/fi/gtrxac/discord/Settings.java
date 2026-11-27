@@ -68,7 +68,7 @@ public class Settings implements RecordIOImpl {
      * Poll Discord in the background and send system notifications through the
      * optional native Symbian agent. Off by default to avoid battery drain.
      */
-    public static boolean notificationsEnabled = false;
+    public static boolean notificationsEnabled = true;
 
     /** Minutes between two background checks (1, 5 or 15). */
     public static int notificationIntervalMinutes = 5;
