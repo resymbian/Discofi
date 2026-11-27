@@ -71,7 +71,7 @@ public class Settings implements RecordIOImpl {
     public static boolean notificationsEnabled = true;
 
     /** Minutes between two background checks (1, 5 or 15). */
-    public static int notificationIntervalMinutes = 5;
+    public static int notificationIntervalMinutes = 1;
 
     /** Which events produce a notification. */
     public static boolean notifyDMs = true;
